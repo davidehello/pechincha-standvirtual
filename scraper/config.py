@@ -13,9 +13,10 @@ PAGE_SIZE = 32
 MAX_PAGES = 1400  # Safety limit (~44,800 listings max)
 
 # Rate Limiting
-REQUESTS_PER_MINUTE = 20  # Conservative: 3s average gap
-MIN_DELAY_SECONDS = 2.0
-MAX_DELAY_SECONDS = 5.0
+# Optimized settings based on rate limit testing (no rate limiting detected)
+REQUESTS_PER_MINUTE = 56  # ~0.5s average gap
+MIN_DELAY_SECONDS = 0.5
+MAX_DELAY_SECONDS = 1.0
 MAX_RETRIES = 5
 RETRY_BACKOFF_MULTIPLIER = 2.0
 
@@ -57,12 +58,19 @@ def get_query_variables(page: int) -> dict:
         ],
         "includePriceEvaluation": True,
         "includeFilters": False,
+        "includeFiltersCounters": False,
+        "includeSuggestedFilters": False,
         "includeNewSearch": False,
         "includeSortOptions": False,
         "includeRatings": False,
         "includePromotedAds": False,
+        "includeNewPromotedAds": False,
         "includeClick2Buy": False,
         "includeTopAds": False,
+        "includeCepik": False,
+        "promotedInput": {
+            "filter": []
+        },
     }
 
 # GraphQL Request Body Template
