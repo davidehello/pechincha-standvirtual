@@ -13,10 +13,11 @@ PAGE_SIZE = 32
 MAX_PAGES = 1400  # Safety limit (~44,800 listings max)
 
 # Rate Limiting
-# Optimized settings based on rate limit testing (no rate limiting detected)
-REQUESTS_PER_MINUTE = 56  # ~0.5s average gap
-MIN_DELAY_SECONDS = 0.5
-MAX_DELAY_SECONDS = 1.0
+# No rate limiting detected - bottleneck is server response time (~0.6s)
+# Using minimal delay for safety margin
+REQUESTS_PER_MINUTE = 100  # ~100 req/min max throughput
+MIN_DELAY_SECONDS = 0.1    # Minimal delay for safety
+MAX_DELAY_SECONDS = 0.3
 MAX_RETRIES = 5
 RETRY_BACKOFF_MULTIPLIER = 2.0
 
