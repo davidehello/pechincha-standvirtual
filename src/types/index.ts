@@ -27,6 +27,7 @@ export interface TListing {
   dealScore: number | null;
   scoreBreakdown: string | null;
   isActive: boolean | null;
+  listingDate: Date | null;  // Original listing date from StandVirtual
   firstSeenAt: Date | null;
   lastSeenAt: Date | null;
   createdAt: Date | null;

@@ -53,6 +53,58 @@ export function formatRelativeDate(date: Date): string {
 }
 
 /**
+ * Format listing date - shows relative time if recent, absolute otherwise
+ */
+export function formatListingDate(date: Date | null | undefined): string {
+  if (!date) return "";
+
+  const now = new Date();
+  const dateObj = date instanceof Date ? date : new Date(date);
+  const diffMs = now.getTime() - dateObj.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  // If within 7 days, show relative time
+  if (diffDays < 7) {
+    return formatRelativeDate(dateObj);
+  }
+
+  // Otherwise show absolute date
+  return dateObj.toLocaleDateString("pt-PT", {
+    day: "numeric",
+    month: "short",
+    year: dateObj.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  });
+}
+
+/**
+ * Check if listing is "new" (less than 24 hours old)
+ */
+export function isNewListing(date: Date | null | undefined): boolean {
+  if (!date) return false;
+
+  const dateObj = date instanceof Date ? date : new Date(date);
+  const now = new Date();
+  const diffMs = now.getTime() - dateObj.getTime();
+  const diffHours = diffMs / (1000 * 60 * 60);
+
+  return diffHours < 24;
+}
+
+/**
+ * Check if listing is recent (less than 3 days old)
+ */
+export function isRecentListing(date: Date | null | undefined): boolean {
+  if (!date) return false;
+
+  const dateObj = date instanceof Date ? date : new Date(date);
+  const now = new Date();
+  const diffMs = now.getTime() - dateObj.getTime();
+  const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+  return diffDays < 3;
+}
+
+/**
  * Format fuel type for display
  */
 export function formatFuelType(fuelType: string): string {

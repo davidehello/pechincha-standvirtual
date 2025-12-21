@@ -251,22 +251,32 @@ class AsyncScraper:
                     logger.info(f"Fetching {len(remaining_pages)} pages in parallel...")
                     results = await client.fetch_pages(remaining_pages, progress_callback)
 
-                    # Process results
+                    # Collect all listings first, then batch save
+                    logger.info("Processing results and extracting listings...")
+                    all_listings = []
                     errors = 0
                     for result in results:
                         if "error" in result:
                             errors += 1
                             continue
 
-                        listings = client.extract_listings(result["data"])
-                        if listings:
-                            new_count, updated_count = self.storage.upsert_listings(listings)
-                            total_new += new_count
-                            total_updated += updated_count
-                            total_found += len(listings)
+                        page_listings = client.extract_listings(result["data"])
+                        if page_listings:
+                            all_listings.extend(page_listings)
 
                     if errors > 0:
                         logger.warning(f"{errors} pages failed to fetch")
+
+                    # Batch save all listings at once
+                    if all_listings:
+                        logger.info(f"Saving {len(all_listings)} listings to database...")
+                        save_start = time.time()
+                        new_count, updated_count = self.storage.bulk_upsert_listings(all_listings)
+                        save_elapsed = time.time() - save_start
+                        logger.info(f"Database save completed in {save_elapsed:.1f}s")
+                        total_new += new_count
+                        total_updated += updated_count
+                        total_found += len(all_listings)
 
                 # Update scrape run
                 self.storage.update_scrape_run(

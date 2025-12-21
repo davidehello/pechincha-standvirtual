@@ -41,6 +41,7 @@ export const listings = sqliteTable('listings', {
 
   // Metadata
   isActive: integer('is_active', { mode: 'boolean' }).default(true),
+  listingDate: integer('listing_date', { mode: 'timestamp' }), // Original listing date from API
   firstSeenAt: integer('first_seen_at', { mode: 'timestamp' }),
   lastSeenAt: integer('last_seen_at', { mode: 'timestamp' }),
   createdAt: integer('created_at', { mode: 'timestamp' }),

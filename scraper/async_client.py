@@ -169,6 +169,18 @@ class AsyncGraphQLClient:
             # Extract parameters
             params = {p["key"]: p["value"] for p in node.get("parameters", []) if p.get("key")}
 
+            # Parse createdAt timestamp from API
+            created_at_str = node.get("createdAt")
+            listing_date = None
+            if created_at_str:
+                try:
+                    from datetime import datetime
+                    # Parse ISO format: "2025-12-12T22:50:46Z"
+                    dt = datetime.fromisoformat(created_at_str.replace("Z", "+00:00"))
+                    listing_date = int(dt.timestamp())
+                except (ValueError, AttributeError):
+                    pass
+
             return {
                 "id": str(node.get("id")),
                 "title": node.get("title", ""),
@@ -190,6 +202,7 @@ class AsyncGraphQLClient:
                 "seller_type": seller_type,
                 "thumbnail_url": thumbnail_url,
                 "badges": badges_list,
+                "listing_date": listing_date,
             }
         except Exception as e:
             logger.error(f"Error parsing listing: {e}")
