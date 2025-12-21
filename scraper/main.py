@@ -2,15 +2,18 @@
 StandVirtual Car Listings Scraper
 
 Main entry point for scraping car listings from StandVirtual.com
+Supports both sequential and parallel (async) scraping modes.
 """
 import sys
 import time
 import logging
 import argparse
+import asyncio
 from typing import Optional
 
 from config import MAX_PAGES
 from client import GraphQLClient, RateLimitError
+from async_client import AsyncGraphQLClient
 from rate_limiter import AdaptiveRateLimiter
 from checkpoint import CheckpointManager, Checkpoint
 from storage import Storage
@@ -185,6 +188,139 @@ class Scraper:
             self.client.close()
 
 
+class AsyncScraper:
+    """Async scraper for parallel requests - much faster than sequential"""
+
+    def __init__(self, max_pages: Optional[int] = None, concurrency: int = 10):
+        self.checkpoint_manager = CheckpointManager()
+        self.storage = Storage()
+        self.max_pages = max_pages or MAX_PAGES
+        self.concurrency = concurrency
+
+    async def run(self) -> dict:
+        """
+        Run the async parallel scraper.
+
+        Returns:
+            Summary statistics
+        """
+        logger.info(f"Starting async scraper with {self.concurrency} concurrent connections...")
+        start_time = time.time()
+
+        # Create scrape run record
+        run_id = self.storage.create_scrape_run()
+        scrape_start_time = int(time.time())
+
+        try:
+            async with AsyncGraphQLClient(concurrency=self.concurrency) as client:
+                # Get total pages from first request
+                first_result = await client.fetch_page(1)
+
+                if "error" in first_result:
+                    raise Exception(f"Failed to fetch first page: {first_result['error']}")
+
+                first_response = first_result["data"]
+                total_pages = min(client.get_total_pages(first_response), self.max_pages)
+                total_count = first_response["data"]["advertSearch"]["totalCount"]
+
+                logger.info(f"Found {total_count:,} listings across {total_pages} pages")
+
+                # Process first page
+                listings = client.extract_listings(first_response)
+                new_count, updated_count = self.storage.upsert_listings(listings)
+                total_new = new_count
+                total_updated = updated_count
+                total_found = len(listings)
+
+                logger.info(f"Page 1: {len(listings)} listings ({new_count} new)")
+
+                # Fetch remaining pages in parallel
+                remaining_pages = list(range(2, total_pages + 1))
+
+                if remaining_pages:
+                    def progress_callback(completed, total):
+                        if completed % 100 == 0 or completed == total:
+                            elapsed = time.time() - start_time
+                            rate = completed / elapsed * 60 if elapsed > 0 else 0
+                            remaining = (total - completed) / rate if rate > 0 else 0
+                            logger.info(
+                                f"Progress: {completed}/{total} pages "
+                                f"({rate:.0f} pages/min, ~{remaining:.1f} min remaining)"
+                            )
+
+                    logger.info(f"Fetching {len(remaining_pages)} pages in parallel...")
+                    results = await client.fetch_pages(remaining_pages, progress_callback)
+
+                    # Process results
+                    errors = 0
+                    for result in results:
+                        if "error" in result:
+                            errors += 1
+                            continue
+
+                        listings = client.extract_listings(result["data"])
+                        if listings:
+                            new_count, updated_count = self.storage.upsert_listings(listings)
+                            total_new += new_count
+                            total_updated += updated_count
+                            total_found += len(listings)
+
+                    if errors > 0:
+                        logger.warning(f"{errors} pages failed to fetch")
+
+                # Update scrape run
+                self.storage.update_scrape_run(
+                    run_id,
+                    pages_scraped=total_pages,
+                    listings_found=total_found,
+                    listings_new=total_new,
+                    listings_updated=total_updated,
+                )
+
+                # Mark old listings as inactive
+                self.storage.mark_inactive_not_seen_since(scrape_start_time)
+
+                # Complete run
+                self.storage.complete_scrape_run(run_id)
+
+                # Final stats
+                elapsed = time.time() - start_time
+                stats = self.storage.get_stats()
+
+                logger.info("=" * 50)
+                logger.info("Scrape completed successfully!")
+                logger.info(f"  Time: {elapsed:.1f}s ({elapsed/60:.1f} min)")
+                logger.info(f"  Speed: {total_pages / elapsed * 60:.0f} pages/min")
+                logger.info(f"  Pages scraped: {total_pages}")
+                logger.info(f"  Listings found: {total_found}")
+                logger.info(f"  New listings: {total_new}")
+                logger.info(f"  Updated listings: {total_updated}")
+                logger.info(f"  Total in database: {stats['total_listings']}")
+                logger.info(f"  Active listings: {stats['active_listings']}")
+                logger.info(f"  Below market: {stats['below_market_count']}")
+                logger.info("=" * 50)
+
+                return {
+                    "status": "completed",
+                    "time_seconds": elapsed,
+                    "pages_scraped": total_pages,
+                    "listings_found": total_found,
+                    "listings_new": total_new,
+                    "listings_updated": total_updated,
+                    **stats,
+                }
+
+        except KeyboardInterrupt:
+            logger.warning("Scrape interrupted by user")
+            self.storage.complete_scrape_run(run_id, status="interrupted")
+            return {"status": "interrupted"}
+
+        except Exception as e:
+            logger.error(f"Scrape failed: {e}")
+            self.storage.complete_scrape_run(run_id, status="failed", error=str(e))
+            raise
+
+
 def main():
     """CLI entry point"""
     parser = argparse.ArgumentParser(description="StandVirtual Car Listings Scraper")
@@ -205,6 +341,17 @@ def main():
         help="Test mode: only scrape 5 pages"
     )
     parser.add_argument(
+        "--parallel",
+        action="store_true",
+        help="Use parallel async mode (much faster, ~1 min vs ~13 min)"
+    )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=10,
+        help="Number of concurrent connections for parallel mode (default: 10)"
+    )
+    parser.add_argument(
         "-v", "--verbose",
         action="store_true",
         help="Enable verbose logging"
@@ -220,8 +367,14 @@ def main():
         max_pages = 5
         logger.info("Test mode: limiting to 5 pages")
 
-    scraper = Scraper(max_pages=max_pages)
-    result = scraper.run(resume=not args.no_resume)
+    if args.parallel:
+        # Use async parallel scraper
+        scraper = AsyncScraper(max_pages=max_pages, concurrency=args.concurrency)
+        result = asyncio.run(scraper.run())
+    else:
+        # Use sequential scraper
+        scraper = Scraper(max_pages=max_pages)
+        result = scraper.run(resume=not args.no_resume)
 
     return 0 if result.get("status") in ("completed", "interrupted") else 1
 
