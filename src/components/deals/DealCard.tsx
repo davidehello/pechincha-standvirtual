@@ -67,37 +67,68 @@ export function DealCard({ listing, onSave, isSaved }: DealCardProps) {
           </div>
         )}
 
-        {/* Save button */}
-        {onSave && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onSave(listing.id);
-            }}
-            className={`absolute bottom-2 right-2 p-1.5 rounded-full transition-colors ${
-              isSaved
-                ? "bg-primary text-primary-foreground"
-                : "bg-background/80 text-foreground hover:bg-background"
-            }`}
-            aria-label={isSaved ? "Remove from saved" : "Save deal"}
+        {/* Action buttons */}
+        <div className="absolute bottom-2 right-2 flex gap-1.5">
+          {/* External link to StandVirtual */}
+          <a
+            href={listing.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            className="p-1.5 rounded-full bg-background/80 text-foreground hover:bg-background transition-colors"
+            aria-label="Open on StandVirtual"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill={isSaved ? "currentColor" : "none"}
-              stroke="currentColor"
-              strokeWidth={2}
+              viewBox="0 0 20 20"
+              fill="currentColor"
               className="w-4 h-4"
             >
               <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                fillRule="evenodd"
+                d="M4.25 5.5a.75.75 0 00-.75.75v8.5c0 .414.336.75.75.75h8.5a.75.75 0 00.75-.75v-4a.75.75 0 011.5 0v4A2.25 2.25 0 0112.75 17h-8.5A2.25 2.25 0 012 14.75v-8.5A2.25 2.25 0 014.25 4h5a.75.75 0 010 1.5h-5z"
+                clipRule="evenodd"
+              />
+              <path
+                fillRule="evenodd"
+                d="M6.194 12.753a.75.75 0 001.06.053L16.5 4.44v2.81a.75.75 0 001.5 0v-4.5a.75.75 0 00-.75-.75h-4.5a.75.75 0 000 1.5h2.553l-9.056 8.194a.75.75 0 00-.053 1.06z"
+                clipRule="evenodd"
               />
             </svg>
-          </button>
-        )}
+          </a>
+
+          {/* Save button */}
+          {onSave && (
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                onSave(listing.id);
+              }}
+              className={`p-1.5 rounded-full transition-colors ${
+                isSaved
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-background/80 text-foreground hover:bg-background"
+              }`}
+              aria-label={isSaved ? "Remove from saved" : "Save deal"}
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill={isSaved ? "currentColor" : "none"}
+                stroke="currentColor"
+                strokeWidth={2}
+                className="w-4 h-4"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+                />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Content */}
