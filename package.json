@@ -11,8 +11,8 @@
     "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
+    "@libsql/client": "^0.15.15",
     "@next/swc-win32-x64-msvc": "^16.1.0",
-    "better-sqlite3": "^12.5.0",
     "drizzle-orm": "^0.45.1",
     "next": "^15.3.5",
     "react": "^18.3.1",
@@ -21,7 +21,6 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
-    "@types/better-sqlite3": "^7.6.13",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",

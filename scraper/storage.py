@@ -1,5 +1,6 @@
 """
 SQLite storage layer for listings - optimized for batch operations
+Supports both local SQLite and Turso (libSQL) for production
 """
 import sqlite3
 import json
@@ -9,9 +10,16 @@ from pathlib import Path
 from typing import Optional
 from contextlib import contextmanager
 
-from config import DATABASE_PATH
+from config import DATABASE_PATH, USE_TURSO, TURSO_DATABASE_URL, TURSO_AUTH_TOKEN
 
 logger = logging.getLogger(__name__)
+
+# Try to import libsql for Turso support
+try:
+    import libsql_experimental as libsql
+    LIBSQL_AVAILABLE = True
+except ImportError:
+    LIBSQL_AVAILABLE = False
 
 
 class Storage:
@@ -19,6 +27,13 @@ class Storage:
 
     def __init__(self, db_path: Path = DATABASE_PATH):
         self.db_path = db_path
+        self.use_turso = USE_TURSO and LIBSQL_AVAILABLE
+
+        if self.use_turso:
+            logger.info(f"Using Turso database: {TURSO_DATABASE_URL}")
+        else:
+            logger.info(f"Using local SQLite database: {db_path}")
+
         self._ensure_tables()
 
     def _ensure_tables(self):
@@ -106,11 +121,20 @@ class Storage:
     @contextmanager
     def _get_connection(self):
         """Get database connection with performance optimizations"""
-        conn = sqlite3.connect(self.db_path)
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA synchronous=NORMAL")  # Faster than FULL, still safe with WAL
-        conn.execute("PRAGMA cache_size=-64000")   # 64MB cache
-        conn.execute("PRAGMA temp_store=MEMORY")   # Temp tables in memory
+        if self.use_turso:
+            # Use Turso (libSQL)
+            conn = libsql.connect(
+                database=TURSO_DATABASE_URL,
+                auth_token=TURSO_AUTH_TOKEN
+            )
+        else:
+            # Use local SQLite
+            conn = sqlite3.connect(self.db_path)
+            conn.execute("PRAGMA journal_mode=WAL")
+            conn.execute("PRAGMA synchronous=NORMAL")  # Faster than FULL, still safe with WAL
+            conn.execute("PRAGMA cache_size=-64000")   # 64MB cache
+            conn.execute("PRAGMA temp_store=MEMORY")   # Temp tables in memory
+
         conn.row_factory = sqlite3.Row
         try:
             yield conn

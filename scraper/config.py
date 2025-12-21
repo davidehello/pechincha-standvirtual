@@ -30,6 +30,11 @@ CHECKPOINT_PATH = DATA_DIR / "checkpoint.json"
 # Ensure data directory exists
 DATA_DIR.mkdir(exist_ok=True)
 
+# Turso configuration (for production)
+TURSO_DATABASE_URL = os.environ.get("TURSO_DATABASE_URL")
+TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
+USE_TURSO = bool(TURSO_DATABASE_URL and TURSO_AUTH_TOKEN)
+
 # Request Headers (mimic browser)
 HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
