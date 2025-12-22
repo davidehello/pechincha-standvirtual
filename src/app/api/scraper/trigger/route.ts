@@ -6,8 +6,8 @@ export async function POST() {
   try {
     const scraperDir = path.join(process.cwd(), "scraper");
 
-    // Spawn Python process
-    const pythonProcess = spawn("python", ["main.py"], {
+    // Spawn Python process with --parallel flag for faster scraping
+    const pythonProcess = spawn("python", ["main.py", "--parallel"], {
       cwd: scraperDir,
       detached: true,
       stdio: "ignore",

@@ -141,8 +141,8 @@ class Scraper:
                     # Continue to next page
                     continue
 
-            # Mark listings not seen in this run as inactive
-            self.storage.mark_inactive_not_seen_since(scrape_start_time)
+            # NOTE: We no longer mark listings as inactive - we want to keep all historical data
+            # Listings are only updated when they're seen again, never deleted
 
             # Mark checkpoint as completed
             checkpoint = self.checkpoint_manager.mark_completed(checkpoint)
@@ -287,8 +287,8 @@ class AsyncScraper:
                     listings_updated=total_updated,
                 )
 
-                # Mark old listings as inactive
-                self.storage.mark_inactive_not_seen_since(scrape_start_time)
+                # NOTE: We no longer mark listings as inactive - we want to keep all historical data
+                # Listings are only updated when they're seen again, never deleted
 
                 # Complete run
                 self.storage.complete_scrape_run(run_id)
