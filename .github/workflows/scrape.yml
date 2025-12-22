@@ -2,14 +2,14 @@ name: Scrape StandVirtual
 
 on:
   schedule:
-    # Run every 15 minutes (public repos have unlimited GitHub Actions minutes)
-    - cron: '*/15 * * * *'
+    # Run every 30 minutes (conservative to avoid excessive rate limiting)
+    - cron: '*/30 * * * *'
   workflow_dispatch: # Allow manual trigger
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 14  # Increased timeout for cloud scraping
 
     steps:
       - name: Checkout code
@@ -34,7 +34,10 @@ jobs:
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: |
           cd scraper
-          python main.py --parallel
+          # Use reduced concurrency (3) and max 200 pages to avoid rate limits
+          # This covers ~6,400 of the most recent listings
+          # Full database builds up over multiple runs
+          python main.py --parallel --concurrency 3 --max-pages 200
 
       - name: Trigger score recalculation
         if: success()
