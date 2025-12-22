@@ -313,7 +313,7 @@ class Storage:
                 placeholders = ",".join(["?" for _ in batch_ids])
                 result = conn.execute(
                     f"SELECT id, price FROM listings WHERE id IN ({placeholders})",
-                    batch_ids
+                    tuple(batch_ids)  # libsql requires tuple, not list
                 ).fetchall()
                 for row in result:
                     existing_map[row[0]] = row[1]
