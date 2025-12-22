@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/layout";
 import { Button } from "@/components/ui";
-import { formatRelativeDate, formatCompactNumber } from "@/lib/utils/format";
+import { formatRelativeDate } from "@/lib/utils/format";
 
 interface ScrapeRun {
   id: number;
@@ -22,8 +22,8 @@ interface Stats {
   totalListings: number;
   activeListings: number;
   belowMarketCount: number;
-  averagePrice: number;
-  averageMileage: number;
+  inMarketCount: number;
+  aboveMarketCount: number;
   topMakes: { make: string; count: number }[];
   lastScrapeRun: ScrapeRun | null;
   scrapeHistory: ScrapeRun[];
@@ -188,23 +188,18 @@ export default function AdminPage() {
                 </div>
               )}
 
-              <div className="flex items-center gap-4">
-                <Button
-                  onClick={handleTriggerScrape}
-                  disabled={scraperStatus.isRunning || triggerLoading}
-                  isLoading={triggerLoading}
-                >
-                  {scraperStatus.isRunning ? "Scraping..." : "Start Scrape"}
-                </Button>
-                <Button variant="secondary" onClick={fetchStats}>
-                  Refresh Stats
-                </Button>
-              </div>
+              <Button
+                onClick={handleTriggerScrape}
+                disabled={scraperStatus.isRunning || triggerLoading}
+                isLoading={triggerLoading}
+              >
+                {scraperStatus.isRunning ? "Scraping..." : "Start Scrape"}
+              </Button>
 
               {message && (
                 <p
                   className={`mt-4 text-sm ${
-                    message.includes("started")
+                    message.includes("started") || message.includes("✓")
                       ? "text-success"
                       : "text-destructive"
                   }`}
@@ -212,19 +207,6 @@ export default function AdminPage() {
                   {message}
                 </p>
               )}
-
-              <div className="mt-4 p-4 rounded-md bg-muted">
-                <h3 className="text-sm font-medium mb-2">
-                  Manual Scraper Command
-                </h3>
-                <code className="block text-xs font-mono text-muted-foreground">
-                  cd scraper && python main.py
-                </code>
-                <p className="text-xs text-muted-foreground mt-2">
-                  Run this command in your terminal to start the scraper
-                  manually. Use <code>--test</code> flag to limit to 5 pages.
-                </p>
-              </div>
             </div>
 
             {/* Database Stats */}
@@ -234,36 +216,73 @@ export default function AdminPage() {
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-md bg-muted">
                   <p className="text-2xl font-bold">
-                    {formatCompactNumber(stats?.activeListings ?? 0)}
+                    {(stats?.activeListings ?? 0).toLocaleString()}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Active Listings
                   </p>
                 </div>
                 <div className="p-4 rounded-md bg-muted">
-                  <p className="text-2xl font-bold">
-                    {formatCompactNumber(stats?.belowMarketCount ?? 0)}
+                  <p className="text-2xl font-bold text-success">
+                    {(stats?.belowMarketCount ?? 0).toLocaleString()}
                   </p>
                   <p className="text-sm text-muted-foreground">Below Market</p>
                 </div>
                 <div className="p-4 rounded-md bg-muted">
                   <p className="text-2xl font-bold">
-                    {stats?.averagePrice
-                      ? `${formatCompactNumber(stats.averagePrice)}`
-                      : "—"}
+                    {(stats?.inMarketCount ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground">Avg Price</p>
+                  <p className="text-sm text-muted-foreground">In Market</p>
                 </div>
                 <div className="p-4 rounded-md bg-muted">
-                  <p className="text-2xl font-bold">
-                    {stats?.averageMileage
-                      ? `${formatCompactNumber(stats.averageMileage)} km`
-                      : "—"}
+                  <p className="text-2xl font-bold text-destructive">
+                    {(stats?.aboveMarketCount ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground">Avg Mileage</p>
+                  <p className="text-sm text-muted-foreground">Above Market</p>
                 </div>
               </div>
             </div>
+
+            {/* Scrape Run History */}
+            {stats?.scrapeHistory && stats.scrapeHistory.length > 0 && (
+              <div className="p-6 rounded-lg border border-border bg-card">
+                <h2 className="text-lg font-semibold mb-4">Scrape History</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">When</th>
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Pages</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Found</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">New</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Updated</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Unavailable</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.scrapeHistory.map((run) => (
+                        <tr key={run.id} className="border-b border-border/50 hover:bg-muted/30">
+                          <td className="py-2 px-2">
+                            {run.completedAt
+                              ? formatRelativeDate(new Date(run.completedAt))
+                              : "—"}
+                          </td>
+                          <td className={`py-2 px-2 capitalize ${getStatusColor(run.status)}`}>
+                            {run.status}
+                          </td>
+                          <td className="py-2 px-2 text-right">{run.pagesScraped?.toLocaleString() ?? "—"}</td>
+                          <td className="py-2 px-2 text-right">{run.listingsFound?.toLocaleString() ?? "—"}</td>
+                          <td className="py-2 px-2 text-right text-success">+{run.listingsNew?.toLocaleString() ?? 0}</td>
+                          <td className="py-2 px-2 text-right">{run.listingsUpdated?.toLocaleString() ?? 0}</td>
+                          <td className="py-2 px-2 text-right text-destructive">-{run.listingsInactive?.toLocaleString() ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
 
             {/* Top Makes */}
             {stats?.topMakes && stats.topMakes.length > 0 && (
@@ -281,140 +300,6 @@ export default function AdminPage() {
                       </span>
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
-
-            {/* Last Scrape Run */}
-            {stats?.lastScrapeRun && (
-              <div className="p-6 rounded-lg border border-border bg-card">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-lg font-semibold">Last Scrape Run</h2>
-                  {stats.lastScrapeRun.completedAt && (
-                    <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4">
-                        <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
-                      </svg>
-                      {new Date(stats.lastScrapeRun.completedAt).toLocaleString("pt-PT", {
-                        day: "numeric",
-                        month: "short",
-                        hour: "2-digit",
-                        minute: "2-digit"
-                      })}
-                    </span>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <p
-                      className={`font-medium capitalize ${getStatusColor(stats.lastScrapeRun.status)}`}
-                    >
-                      {stats.lastScrapeRun.status}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Started</p>
-                    <p className="font-medium">
-                      {stats.lastScrapeRun.startedAt
-                        ? formatRelativeDate(
-                            new Date(stats.lastScrapeRun.startedAt)
-                          )
-                        : "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Pages Scraped
-                    </p>
-                    <p className="font-medium">
-                      {stats.lastScrapeRun.pagesScraped?.toLocaleString() ?? "—"}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">
-                      Listings Found
-                    </p>
-                    <p className="font-medium">
-                      {stats.lastScrapeRun.listingsFound?.toLocaleString() ??
-                        "—"}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">New</p>
-                    <p className="font-medium text-success">
-                      +{stats.lastScrapeRun.listingsNew?.toLocaleString() ?? 0}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Updated</p>
-                    <p className="font-medium">
-                      {stats.lastScrapeRun.listingsUpdated?.toLocaleString() ??
-                        0}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Unavailable</p>
-                    <p className="font-medium text-destructive">
-                      -{stats.lastScrapeRun.listingsInactive?.toLocaleString() ?? 0}
-                    </p>
-                  </div>
-                </div>
-
-                {stats.lastScrapeRun.errorMessage && (
-                  <div className="mt-4 p-3 rounded-md bg-destructive/10 text-destructive text-sm">
-                    {stats.lastScrapeRun.errorMessage}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Scrape Run History */}
-            {stats?.scrapeHistory && stats.scrapeHistory.length > 0 && (
-              <div className="p-6 rounded-lg border border-border bg-card">
-                <h2 className="text-lg font-semibold mb-4">Scrape History</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border">
-                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">Date</th>
-                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Pages</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Found</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">New</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Updated</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Unavailable</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {stats.scrapeHistory.map((run) => (
-                        <tr key={run.id} className="border-b border-border/50 hover:bg-muted/30">
-                          <td className="py-2 px-2">
-                            {run.completedAt
-                              ? new Date(run.completedAt).toLocaleString("pt-PT", {
-                                  day: "numeric",
-                                  month: "short",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "—"}
-                          </td>
-                          <td className={`py-2 px-2 capitalize ${getStatusColor(run.status)}`}>
-                            {run.status}
-                          </td>
-                          <td className="py-2 px-2 text-right">{run.pagesScraped?.toLocaleString() ?? "—"}</td>
-                          <td className="py-2 px-2 text-right">{run.listingsFound?.toLocaleString() ?? "—"}</td>
-                          <td className="py-2 px-2 text-right text-success">+{run.listingsNew?.toLocaleString() ?? 0}</td>
-                          <td className="py-2 px-2 text-right">{run.listingsUpdated?.toLocaleString() ?? 0}</td>
-                          <td className="py-2 px-2 text-right text-destructive">-{run.listingsInactive?.toLocaleString() ?? 0}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
                 </div>
               </div>
             )}

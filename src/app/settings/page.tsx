@@ -8,6 +8,7 @@ import { TAlgorithmWeights, DEFAULT_WEIGHTS } from "@/types";
 export default function SettingsPage() {
   const [weights, setWeights] = useState<TAlgorithmWeights>(DEFAULT_WEIGHTS);
   const [isSaving, setIsSaving] = useState(false);
+  const [isRecalculating, setIsRecalculating] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   // Load saved weights
@@ -57,6 +58,27 @@ export default function SettingsPage() {
   const handleReset = () => {
     setWeights(DEFAULT_WEIGHTS);
     setMessage(null);
+  };
+
+  const handleRecalculate = async () => {
+    setIsRecalculating(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/settings/recalculate", {
+        method: "POST",
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage(`Recalculated scores for ${data.updatedCount.toLocaleString()} listings`);
+      } else {
+        setMessage("Failed to recalculate scores");
+      }
+    } catch (error) {
+      setMessage("Failed to recalculate scores");
+    } finally {
+      setIsRecalculating(false);
+    }
   };
 
   const totalWeight =
@@ -177,22 +199,17 @@ export default function SettingsPage() {
             )}
           </div>
 
-          {/* Formula preview */}
-          <div className="p-6 rounded-lg border border-border bg-card">
-            <h2 className="text-lg font-semibold mb-4">Score Formula</h2>
-            <code className="block p-4 rounded bg-muted text-sm font-mono overflow-x-auto">
-              dealScore = <br />
-              &nbsp;&nbsp;(priceVsSegment × {(weights.priceVsSegment * 100).toFixed(0)}%) +<br />
-              &nbsp;&nbsp;(priceEvaluation × {(weights.priceEvaluation * 100).toFixed(0)}%) +<br />
-              &nbsp;&nbsp;(mileageQuality × {(weights.mileageQuality * 100).toFixed(0)}%) +<br />
-              &nbsp;&nbsp;(pricePerKm × {(weights.pricePerKm * 100).toFixed(0)}%)
-            </code>
-          </div>
-
           {/* Actions */}
           <div className="flex items-center gap-4">
             <Button onClick={handleSave} disabled={!isValid || isSaving}>
               {isSaving ? "Saving..." : "Save Weights"}
+            </Button>
+            <Button
+              variant="secondary"
+              onClick={handleRecalculate}
+              disabled={isRecalculating}
+            >
+              {isRecalculating ? "Recalculating..." : "Recalculate Scores"}
             </Button>
             <Button variant="secondary" onClick={handleReset}>
               Reset to Defaults
@@ -202,7 +219,7 @@ export default function SettingsPage() {
           {message && (
             <p
               className={`text-sm ${
-                message.includes("success")
+                message.includes("success") || message.includes("Recalculated")
                   ? "text-success"
                   : "text-destructive"
               }`}

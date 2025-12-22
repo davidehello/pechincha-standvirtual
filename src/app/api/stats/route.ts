@@ -10,8 +10,8 @@ export async function GET() {
         total: sql<number>`count(*)`,
         active: sql<number>`sum(case when ${listings.isActive} = 1 then 1 else 0 end)`,
         belowMarket: sql<number>`sum(case when ${listings.priceEvaluation} = 'BELOW' and ${listings.isActive} = 1 then 1 else 0 end)`,
-        avgPrice: sql<number>`avg(case when ${listings.isActive} = 1 then ${listings.price} end)`,
-        avgMileage: sql<number>`avg(case when ${listings.isActive} = 1 then ${listings.mileage} end)`,
+        inMarket: sql<number>`sum(case when ${listings.priceEvaluation} = 'IN' and ${listings.isActive} = 1 then 1 else 0 end)`,
+        aboveMarket: sql<number>`sum(case when ${listings.priceEvaluation} = 'ABOVE' and ${listings.isActive} = 1 then 1 else 0 end)`,
       })
       .from(listings);
 
@@ -71,8 +71,8 @@ export async function GET() {
       totalListings: stats?.total ?? 0,
       activeListings: stats?.active ?? 0,
       belowMarketCount: stats?.belowMarket ?? 0,
-      averagePrice: Math.round(stats?.avgPrice ?? 0),
-      averageMileage: Math.round(stats?.avgMileage ?? 0),
+      inMarketCount: stats?.inMarket ?? 0,
+      aboveMarketCount: stats?.aboveMarket ?? 0,
       topMakes,
       lastScrapeRun: lastRun[0] ?? null,
       scrapeHistory,

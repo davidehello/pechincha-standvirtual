@@ -77,8 +77,21 @@ export default function DealDetailPage() {
   }
 
   const score = listing.dealScore ?? 0;
-  const scoreBreakdown: TScoreBreakdown | null = listing.scoreBreakdown
+  const rawBreakdown = listing.scoreBreakdown
     ? JSON.parse(listing.scoreBreakdown)
+    : null;
+
+  // Normalize score breakdown to handle both old and new formats
+  // Old format: { price_evaluation: {score, weight}, mileage: {score}, age: {score}, freshness: {score} }
+  // New format: { priceVsSegment: {score}, priceEvaluation: {score}, mileageQuality: {score}, pricePerKm: {score} }
+  const scoreBreakdown: TScoreBreakdown | null = rawBreakdown
+    ? {
+        priceVsSegment: rawBreakdown.priceVsSegment?.score ?? rawBreakdown.price_evaluation?.score ?? 0,
+        priceEvaluation: rawBreakdown.priceEvaluation?.score ?? rawBreakdown.price_evaluation?.score ?? 0,
+        mileageQuality: rawBreakdown.mileageQuality?.score ?? rawBreakdown.mileage?.score ?? 0,
+        pricePerKm: rawBreakdown.pricePerKm?.score ?? rawBreakdown.freshness?.score ?? 0,
+        total: score,
+      }
     : null;
 
   return (

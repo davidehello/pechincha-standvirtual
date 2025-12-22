@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { Providers } from "./providers";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,9 +14,9 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Car Deal Finder | Find the Best Used Car Deals in Portugal",
+  title: "Stand Analyzer | Encontre as Melhores Ofertas de Carros Usados",
   description:
-    "Discover undervalued used cars from StandVirtual. Advanced deal scoring algorithm finds the best value cars based on price, mileage, and market comparison.",
+    "Descubra carros usados subvalorizados do StandVirtual. Algoritmo avançado de pontuação encontra os melhores negócios com base no preço, quilometragem e comparação de mercado.",
 };
 
 export default function RootLayout({
@@ -24,11 +25,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="pt" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased min-h-screen bg-background text-foreground`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

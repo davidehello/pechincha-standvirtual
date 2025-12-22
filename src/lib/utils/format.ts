@@ -35,27 +35,53 @@ export function formatEnginePower(power: number): string {
 }
 
 /**
- * Format date relative to now
+ * Format date relative to now (for PT)
  */
-export function formatRelativeDate(date: Date): string {
+export function formatRelativeDate(
+  date: Date,
+  lang: "pt" | "en" = "pt"
+): string {
   const now = new Date();
   const diffMs = now.getTime() - date.getTime();
   const diffMins = Math.floor(diffMs / (1000 * 60));
   const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffMins < 1) return "just now";
-  if (diffMins < 60) return `${diffMins}m ago`;
-  if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays < 7) return `${diffDays}d ago`;
+  if (lang === "pt") {
+    if (diffMins < 1) return "agora";
+    if (diffMins < 60) return `${diffMins} min`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+  } else {
+    if (diffMins < 1) return "now";
+    if (diffMins < 60) return `${diffMins}m`;
+    if (diffHours < 24) return `${diffHours}h`;
+    if (diffDays < 7) return `${diffDays}d`;
+  }
 
-  return date.toLocaleDateString("pt-PT");
+  return formatAbsoluteDate(date);
+}
+
+/**
+ * Format absolute date as DD/MM/YYYY HH:mm
+ */
+export function formatAbsoluteDate(date: Date): string {
+  const day = date.getDate().toString().padStart(2, "0");
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
+  const year = date.getFullYear();
+  const hours = date.getHours().toString().padStart(2, "0");
+  const mins = date.getMinutes().toString().padStart(2, "0");
+
+  return `${day}/${month}/${year} ${hours}:${mins}`;
 }
 
 /**
  * Format listing date - shows relative time if recent, absolute otherwise
  */
-export function formatListingDate(date: Date | null | undefined): string {
+export function formatListingDate(
+  date: Date | null | undefined,
+  lang: "pt" | "en" = "pt"
+): string {
   if (!date) return "";
 
   const now = new Date();
@@ -65,15 +91,11 @@ export function formatListingDate(date: Date | null | undefined): string {
 
   // If within 7 days, show relative time
   if (diffDays < 7) {
-    return formatRelativeDate(dateObj);
+    return formatRelativeDate(dateObj, lang);
   }
 
-  // Otherwise show absolute date
-  return dateObj.toLocaleDateString("pt-PT", {
-    day: "numeric",
-    month: "short",
-    year: dateObj.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
-  });
+  // Otherwise show absolute date DD/MM/YYYY HH:mm
+  return formatAbsoluteDate(dateObj);
 }
 
 /**
