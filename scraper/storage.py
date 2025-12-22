@@ -437,9 +437,9 @@ class Storage:
                         ))
                         updated_count += 1
                     else:
-                        # Insert new
+                        # Insert new (use INSERT OR IGNORE to handle race conditions/duplicates)
                         conn.execute("""
-                            INSERT INTO listings (
+                            INSERT OR IGNORE INTO listings (
                                 id, title, url, price, price_evaluation,
                                 make, model, version, year, mileage,
                                 fuel_type, gearbox, engine_capacity, engine_power,
