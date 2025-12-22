@@ -77,6 +77,8 @@ export default function HomePage() {
         params.set("regions", filters.regions.join(","));
       if (filters.priceEvaluations?.length)
         params.set("priceEvaluations", filters.priceEvaluations.join(","));
+      if (filters.hideUnavailable !== undefined)
+        params.set("hideUnavailable", filters.hideUnavailable.toString());
 
       const res = await fetch(`/api/deals?${params}`);
       const data = await res.json();

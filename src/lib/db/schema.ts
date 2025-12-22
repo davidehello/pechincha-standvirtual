@@ -65,6 +65,7 @@ export const scrapeRuns = sqliteTable('scrape_runs', {
   listingsFound: integer('listings_found').default(0),
   listingsNew: integer('listings_new').default(0),
   listingsUpdated: integer('listings_updated').default(0),
+  listingsInactive: integer('listings_inactive').default(0),  // Listings marked as unavailable
   errorMessage: text('error_message'),
 });
 

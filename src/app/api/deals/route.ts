@@ -30,6 +30,7 @@ const QuerySchema = z.object({
   gearboxTypes: z.string().optional(),
   regions: z.string().optional(),
   priceEvaluations: z.string().optional(),
+  hideUnavailable: z.coerce.boolean().default(true),  // Default to hiding unavailable
 });
 
 export async function GET(request: NextRequest) {
@@ -39,7 +40,12 @@ export async function GET(request: NextRequest) {
     const query = QuerySchema.parse(params);
 
     // Build conditions
-    const conditions = [sql`${listings.isActive} = 1`];
+    const conditions = [];
+
+    // Filter by availability (hide unavailable by default)
+    if (query.hideUnavailable) {
+      conditions.push(sql`${listings.isActive} = 1`);
+    }
 
     if (query.priceMin) {
       conditions.push(gte(listings.price, query.priceMin));
@@ -111,11 +117,14 @@ export async function GET(request: NextRequest) {
         orderBy = desc(listings.dealScore);
     }
 
+    // Build where clause (handle empty conditions)
+    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+
     // Get total count
     const countResult = await db
       .select({ count: sql<number>`count(*)` })
       .from(listings)
-      .where(and(...conditions));
+      .where(whereClause);
 
     const total = countResult[0]?.count ?? 0;
 
@@ -123,7 +132,7 @@ export async function GET(request: NextRequest) {
     const deals = await db
       .select()
       .from(listings)
-      .where(and(...conditions))
+      .where(whereClause)
       .orderBy(orderBy)
       .limit(query.pageSize)
       .offset((query.page - 1) * query.pageSize);

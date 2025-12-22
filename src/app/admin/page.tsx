@@ -5,6 +5,19 @@ import { Header } from "@/components/layout";
 import { Button } from "@/components/ui";
 import { formatRelativeDate, formatCompactNumber } from "@/lib/utils/format";
 
+interface ScrapeRun {
+  id: number;
+  status: string;
+  startedAt: string | null;
+  completedAt: string | null;
+  pagesScraped: number | null;
+  listingsFound: number | null;
+  listingsNew: number | null;
+  listingsUpdated: number | null;
+  listingsInactive: number | null;
+  errorMessage: string | null;
+}
+
 interface Stats {
   totalListings: number;
   activeListings: number;
@@ -12,17 +25,8 @@ interface Stats {
   averagePrice: number;
   averageMileage: number;
   topMakes: { make: string; count: number }[];
-  lastScrapeRun: {
-    id: number;
-    status: string;
-    startedAt: string | null;
-    completedAt: string | null;
-    pagesScraped: number | null;
-    listingsFound: number | null;
-    listingsNew: number | null;
-    listingsUpdated: number | null;
-    errorMessage: string | null;
-  } | null;
+  lastScrapeRun: ScrapeRun | null;
+  scrapeHistory: ScrapeRun[];
 }
 
 interface ScraperStatus {
@@ -339,7 +343,7 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                   <div>
                     <p className="text-sm text-muted-foreground">New</p>
                     <p className="font-medium text-success">
@@ -353,6 +357,12 @@ export default function AdminPage() {
                         0}
                     </p>
                   </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Unavailable</p>
+                    <p className="font-medium text-destructive">
+                      -{stats.lastScrapeRun.listingsInactive?.toLocaleString() ?? 0}
+                    </p>
+                  </div>
                 </div>
 
                 {stats.lastScrapeRun.errorMessage && (
@@ -360,6 +370,52 @@ export default function AdminPage() {
                     {stats.lastScrapeRun.errorMessage}
                   </div>
                 )}
+              </div>
+            )}
+
+            {/* Scrape Run History */}
+            {stats?.scrapeHistory && stats.scrapeHistory.length > 0 && (
+              <div className="p-6 rounded-lg border border-border bg-card">
+                <h2 className="text-lg font-semibold mb-4">Scrape History</h2>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">Date</th>
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Pages</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Found</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">New</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Updated</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Unavailable</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {stats.scrapeHistory.map((run) => (
+                        <tr key={run.id} className="border-b border-border/50 hover:bg-muted/30">
+                          <td className="py-2 px-2">
+                            {run.completedAt
+                              ? new Date(run.completedAt).toLocaleString("pt-PT", {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "—"}
+                          </td>
+                          <td className={`py-2 px-2 capitalize ${getStatusColor(run.status)}`}>
+                            {run.status}
+                          </td>
+                          <td className="py-2 px-2 text-right">{run.pagesScraped?.toLocaleString() ?? "—"}</td>
+                          <td className="py-2 px-2 text-right">{run.listingsFound?.toLocaleString() ?? "—"}</td>
+                          <td className="py-2 px-2 text-right text-success">+{run.listingsNew?.toLocaleString() ?? 0}</td>
+                          <td className="py-2 px-2 text-right">{run.listingsUpdated?.toLocaleString() ?? 0}</td>
+                          <td className="py-2 px-2 text-right text-destructive">-{run.listingsInactive?.toLocaleString() ?? 0}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

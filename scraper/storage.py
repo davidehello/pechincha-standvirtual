@@ -11,6 +11,7 @@ from typing import Optional
 from contextlib import contextmanager
 
 from config import DATABASE_PATH, USE_TURSO, TURSO_DATABASE_URL, TURSO_AUTH_TOKEN
+from scoring import calculate_deal_score
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +82,7 @@ class Storage:
                     listings_found INTEGER DEFAULT 0,
                     listings_new INTEGER DEFAULT 0,
                     listings_updated INTEGER DEFAULT 0,
+                    listings_inactive INTEGER DEFAULT 0,
                     error_message TEXT
                 );
 
@@ -318,18 +320,20 @@ class Storage:
                     seller_type TEXT,
                     thumbnail_url TEXT,
                     badges TEXT,
-                    listing_date INTEGER
+                    listing_date INTEGER,
+                    deal_score REAL,
+                    score_breakdown TEXT
                 )
             """)
 
             # Clear temp table
             conn.execute("DELETE FROM temp_listings")
 
-            # Bulk insert into temp table (use INSERT OR REPLACE to handle duplicates from pagination)
-            conn.executemany("""
-                INSERT OR REPLACE INTO temp_listings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            """, [
-                (
+            # Calculate deal scores for each listing
+            listings_with_scores = []
+            for listing in listings:
+                score, breakdown = calculate_deal_score(listing)
+                listings_with_scores.append((
                     listing["id"],
                     listing["title"],
                     listing["url"],
@@ -351,9 +355,14 @@ class Storage:
                     listing.get("thumbnail_url"),
                     json.dumps(listing.get("badges", [])),
                     listing.get("listing_date"),
-                )
-                for listing in listings
-            ])
+                    score,
+                    json.dumps(breakdown),
+                ))
+
+            # Bulk insert into temp table (use INSERT OR REPLACE to handle duplicates from pagination)
+            conn.executemany("""
+                INSERT OR REPLACE INTO temp_listings VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, listings_with_scores)
 
             # Count existing vs new (for return values and price history)
             existing_ids = set(row[0] for row in conn.execute("""
@@ -394,6 +403,8 @@ class Storage:
                     thumbnail_url = (SELECT thumbnail_url FROM temp_listings WHERE temp_listings.id = listings.id),
                     badges = (SELECT badges FROM temp_listings WHERE temp_listings.id = listings.id),
                     listing_date = COALESCE((SELECT listing_date FROM temp_listings WHERE temp_listings.id = listings.id), listings.listing_date),
+                    deal_score = (SELECT deal_score FROM temp_listings WHERE temp_listings.id = listings.id),
+                    score_breakdown = (SELECT score_breakdown FROM temp_listings WHERE temp_listings.id = listings.id),
                     is_active = 1,
                     last_seen_at = {now}
                 WHERE id IN (SELECT id FROM temp_listings)
@@ -406,7 +417,7 @@ class Storage:
                     make, model, version, year, mileage,
                     fuel_type, gearbox, engine_capacity, engine_power,
                     city, region, seller_name, seller_type,
-                    thumbnail_url, badges, is_active,
+                    thumbnail_url, badges, deal_score, score_breakdown, is_active,
                     listing_date, first_seen_at, last_seen_at, created_at
                 )
                 SELECT
@@ -414,7 +425,7 @@ class Storage:
                     t.make, t.model, t.version, t.year, t.mileage,
                     t.fuel_type, t.gearbox, t.engine_capacity, t.engine_power,
                     t.city, t.region, t.seller_name, t.seller_type,
-                    t.thumbnail_url, t.badges, 1,
+                    t.thumbnail_url, t.badges, t.deal_score, t.score_breakdown, 1,
                     t.listing_date, {now}, {now}, {now}
                 FROM temp_listings t
                 WHERE t.id NOT IN (SELECT id FROM listings)
@@ -437,8 +448,8 @@ class Storage:
 
         return new_count, updated_count
 
-    def mark_inactive_not_seen_since(self, timestamp: int):
-        """Mark listings not seen since timestamp as inactive"""
+    def mark_inactive_not_seen_since(self, timestamp: int) -> int:
+        """Mark listings not seen since timestamp as inactive. Returns count of affected rows."""
         with self._get_connection() as conn:
             result = conn.execute(
                 "UPDATE listings SET is_active = 0 WHERE last_seen_at < ? AND is_active = 1",
@@ -446,7 +457,8 @@ class Storage:
             )
             count = result.rowcount
             if count > 0:
-                logger.info(f"Marked {count} listings as inactive")
+                logger.info(f"Marked {count} listings as inactive/unavailable")
+            return count
 
     def create_scrape_run(self) -> int:
         """Create a new scrape run record"""
@@ -465,6 +477,7 @@ class Storage:
         listings_found: int = 0,
         listings_new: int = 0,
         listings_updated: int = 0,
+        listings_inactive: int = 0,
     ):
         """Update scrape run progress"""
         with self._get_connection() as conn:
@@ -473,9 +486,10 @@ class Storage:
                     pages_scraped = ?,
                     listings_found = ?,
                     listings_new = ?,
-                    listings_updated = ?
+                    listings_updated = ?,
+                    listings_inactive = ?
                 WHERE id = ?
-            """, (pages_scraped, listings_found, listings_new, listings_updated, run_id))
+            """, (pages_scraped, listings_found, listings_new, listings_updated, listings_inactive, run_id))
 
     def complete_scrape_run(self, run_id: int, status: str = "completed", error: Optional[str] = None):
         """Mark scrape run as completed or failed"""

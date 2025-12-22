@@ -34,6 +34,13 @@ export async function GET() {
       .orderBy(desc(scrapeRuns.id))
       .limit(1);
 
+    // Get scrape history (last 20 runs)
+    const scrapeHistory = await db
+      .select()
+      .from(scrapeRuns)
+      .orderBy(desc(scrapeRuns.id))
+      .limit(20);
+
     // Get unique makes for filters
     const makes = await db
       .select({ make: listings.make })
@@ -68,6 +75,7 @@ export async function GET() {
       averageMileage: Math.round(stats?.avgMileage ?? 0),
       topMakes,
       lastScrapeRun: lastRun[0] ?? null,
+      scrapeHistory,
       filterOptions: {
         makes: makes.map((m) => m.make).filter(Boolean),
         models: models.map((m) => m.model).filter(Boolean),

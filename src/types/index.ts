@@ -77,6 +77,7 @@ export interface TFilterOptions {
   enginePowerMax?: number;
   engineCapacityMin?: number;
   engineCapacityMax?: number;
+  hideUnavailable?: boolean;  // Hide listings not seen in latest scrape
 }
 
 // Sort options

@@ -85,6 +85,18 @@ export function FilterPanel({
         />
       </div>
 
+      {/* Availability */}
+      <div className="space-y-2">
+        <Checkbox
+          label="Hide unavailable listings"
+          checked={filters.hideUnavailable ?? true}
+          onChange={(checked) => updateFilter("hideUnavailable", checked)}
+        />
+        <p className="text-xs text-muted-foreground">
+          Uncheck to show listings no longer on StandVirtual
+        </p>
+      </div>
+
       {/* Price */}
       <RangeSlider
         label="Price"

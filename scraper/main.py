@@ -142,8 +142,18 @@ class Scraper:
                     # Continue to next page
                     continue
 
-            # NOTE: We no longer mark listings as inactive - we want to keep all historical data
-            # Listings are only updated when they're seen again, never deleted
+            # Mark listings as inactive if not seen in this scrape
+            inactive_count = self.storage.mark_inactive_not_seen_since(scrape_start_time)
+
+            # Update scrape run with final stats including inactive count
+            self.storage.update_scrape_run(
+                run_id,
+                pages_scraped=checkpoint.last_page,
+                listings_found=checkpoint.listings_found,
+                listings_new=checkpoint.listings_new,
+                listings_updated=checkpoint.listings_updated,
+                listings_inactive=inactive_count,
+            )
 
             # Mark checkpoint as completed
             checkpoint = self.checkpoint_manager.mark_completed(checkpoint)
@@ -157,6 +167,7 @@ class Scraper:
             logger.info(f"  Listings found: {checkpoint.listings_found}")
             logger.info(f"  New listings: {checkpoint.listings_new}")
             logger.info(f"  Updated listings: {checkpoint.listings_updated}")
+            logger.info(f"  Marked unavailable: {inactive_count}")
             logger.info(f"  Total in database: {stats['total_listings']}")
             logger.info(f"  Active listings: {stats['active_listings']}")
             logger.info(f"  Below market: {stats['below_market_count']}")
@@ -168,6 +179,7 @@ class Scraper:
                 "listings_found": checkpoint.listings_found,
                 "listings_new": checkpoint.listings_new,
                 "listings_updated": checkpoint.listings_updated,
+                "listings_inactive": inactive_count,
                 **stats,
             }
 
@@ -294,17 +306,18 @@ class AsyncScraper:
                         total_updated += updated_count
                         total_found += len(all_listings)
 
-                # Update scrape run
+                # Mark listings as inactive if not seen in this scrape
+                inactive_count = self.storage.mark_inactive_not_seen_since(scrape_start_time)
+
+                # Update scrape run with final stats including inactive count
                 self.storage.update_scrape_run(
                     run_id,
                     pages_scraped=total_pages,
                     listings_found=total_found,
                     listings_new=total_new,
                     listings_updated=total_updated,
+                    listings_inactive=inactive_count,
                 )
-
-                # NOTE: We no longer mark listings as inactive - we want to keep all historical data
-                # Listings are only updated when they're seen again, never deleted
 
                 # Complete run
                 self.storage.complete_scrape_run(run_id)
@@ -321,6 +334,7 @@ class AsyncScraper:
                 logger.info(f"  Listings found: {total_found}")
                 logger.info(f"  New listings: {total_new}")
                 logger.info(f"  Updated listings: {total_updated}")
+                logger.info(f"  Marked unavailable: {inactive_count}")
                 logger.info(f"  Total in database: {stats['total_listings']}")
                 logger.info(f"  Active listings: {stats['active_listings']}")
                 logger.info(f"  Below market: {stats['below_market_count']}")
@@ -333,6 +347,7 @@ class AsyncScraper:
                     "listings_found": total_found,
                     "listings_new": total_new,
                     "listings_updated": total_updated,
+                    "listings_inactive": inactive_count,
                     **stats,
                 }
 
