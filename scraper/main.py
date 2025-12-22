@@ -299,7 +299,7 @@ class AsyncScraper:
                     if all_listings:
                         logger.info(f"Saving {len(all_listings)} listings to database...")
                         save_start = time.time()
-                        new_count, updated_count = self.storage.bulk_upsert_listings(all_listings)
+                        new_count, updated_count = self.storage.upsert_listings(all_listings)
                         save_elapsed = time.time() - save_start
                         logger.info(f"Database save completed in {save_elapsed:.1f}s")
                         total_new += new_count
