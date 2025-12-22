@@ -1,13 +1,13 @@
 export const translations = {
   pt: {
     // App name
-    appName: "StandVirtual Analisador",
-    appNameShort: "SVA",
+    appName: "Caça Pechinchas",
+    appNameShort: "C",
 
     // Navigation
     nav: {
       deals: "Ofertas",
-      saved: "Guardados",
+      saved: "Favoritos",
       settings: "Definições",
       admin: "Admin",
     },
@@ -16,9 +16,9 @@ export const translations = {
     deals: {
       title: "Encontre as Melhores Ofertas de Carros Usados em Portugal",
       count: "ofertas",
-      updated: "Atualizado",
+      lastUpdate: "Última Atualização",
       noDeals: "Sem ofertas",
-      noDealsDesc: "Execute o scraper para obter listagens.",
+      noDealsDesc: "Execute a recolha para obter listagens.",
       goToAdmin: "Ir para Admin",
       loadMore: "Carregar Mais",
       sortBy: {
@@ -86,8 +86,17 @@ export const translations = {
       power: "Potência",
       engine: "Motor",
       viewInStandVirtual: "Ver no StandVirtual",
+      addToFavorites: "Adicionar aos Favoritos",
+      removeFromFavorites: "Remover dos Favoritos",
       new: "NOVO",
       published: "Publicado",
+      score: "Pontuação",
+      priceDropped: "Preço baixou",
+      priceIncreased: "Preço subiu",
+      priceHistory: "Histórico de Preços",
+      currentPrice: "Preço atual",
+      previousPrice: "Preço anterior",
+      noHistory: "Sem histórico de preços",
     },
 
     // Score breakdown (tooltip)
@@ -100,11 +109,11 @@ export const translations = {
       total: "Total",
     },
 
-    // Saved page
+    // Saved page (Favorites)
     saved: {
-      title: "Ofertas Guardadas",
-      empty: "Nenhuma oferta guardada",
-      emptyDesc: "Guarde ofertas clicando no coração.",
+      title: "Favoritos",
+      empty: "Nenhum favorito",
+      emptyDesc: "Adicione ofertas aos favoritos clicando no coração.",
     },
 
     // Settings page
@@ -125,8 +134,12 @@ export const translations = {
       currentTotal: "Total atual",
       save: "Guardar Pesos",
       saving: "A guardar...",
+      saveSuccess: "Pesos guardados com sucesso!",
+      saveFailed: "Erro ao guardar pesos",
       recalculate: "Recalcular Pontuações",
       recalculating: "A recalcular...",
+      recalculateSuccess: "Pontuações recalculadas para",
+      recalculateFailed: "Erro ao recalcular pontuações",
       resetDefaults: "Repor Padrões",
       howItWorks: "Como Funciona",
       howItWorksDesc: "O algoritmo calcula uma pontuação de 0-100 para cada listagem com base nos pesos configurados.",
@@ -135,15 +148,40 @@ export const translations = {
     // Admin page
     admin: {
       title: "Painel de Administração",
+      description: "Gerir a recolha de dados e ver estatísticas da base de dados.",
       stats: "Estatísticas",
       totalListings: "Total de Listagens",
       activeListings: "Listagens Ativas",
       belowMarket: "Abaixo do Mercado",
-      lastScrape: "Último Scrape",
-      scrapeHistory: "Histórico de Scrapes",
+      inMarket: "No Mercado",
+      aboveMarket: "Acima do Mercado",
+      lastScrape: "Última Recolha",
+      scrapeHistory: "Histórico de Recolhas",
       topMakes: "Marcas Principais",
-      runScraper: "Executar Scraper",
+      runScraper: "Iniciar Recolha",
       running: "A executar...",
+      scraperControls: "Controlos de Recolha",
+      idle: "Inativo",
+      progress: "Progresso",
+      page: "Página",
+      listingsFound: "listagens encontradas",
+      listings: "listagens",
+      scraping: "A recolher...",
+      startScrape: "Iniciar Recolha",
+      scraperStarted: "Recolha iniciada! Veja o progresso abaixo.",
+      scrapeCompleted: "Recolha concluída! Estatísticas atualizadas.",
+      failedToStart: "Falha ao iniciar a recolha",
+      dbStats: "Estatísticas da Base de Dados",
+      when: "Quando",
+      status: "Estado",
+      pages: "Páginas",
+      found: "Encontradas",
+      new: "Novas",
+      updated: "Atualizadas",
+      unavailable: "Indisponíveis",
+      statusCompleted: "Concluído",
+      statusRunning: "A executar",
+      statusFailed: "Falhou",
     },
 
     // Detail page
@@ -188,13 +226,13 @@ export const translations = {
 
   en: {
     // App name
-    appName: "StandVirtual Analisador",
-    appNameShort: "SVA",
+    appName: "Caça Pechinchas",
+    appNameShort: "C",
 
     // Navigation
     nav: {
       deals: "Deals",
-      saved: "Saved",
+      saved: "Favorites",
       settings: "Settings",
       admin: "Admin",
     },
@@ -203,7 +241,7 @@ export const translations = {
     deals: {
       title: "Find the Best Used Car Deals in Portugal",
       count: "deals",
-      updated: "Updated",
+      lastUpdate: "Last Update",
       noDeals: "No deals found",
       noDealsDesc: "Run the scraper to fetch listings.",
       goToAdmin: "Go to Admin",
@@ -273,8 +311,17 @@ export const translations = {
       power: "Power",
       engine: "Engine",
       viewInStandVirtual: "View in StandVirtual",
+      addToFavorites: "Add to Favorites",
+      removeFromFavorites: "Remove from Favorites",
       new: "NEW",
       published: "Published",
+      score: "Score",
+      priceDropped: "Price dropped",
+      priceIncreased: "Price increased",
+      priceHistory: "Price History",
+      currentPrice: "Current price",
+      previousPrice: "Previous price",
+      noHistory: "No price history",
     },
 
     // Score breakdown (tooltip)
@@ -287,11 +334,11 @@ export const translations = {
       total: "Total",
     },
 
-    // Saved page
+    // Saved page (Favorites)
     saved: {
-      title: "Saved Deals",
-      empty: "No saved deals",
-      emptyDesc: "Save deals by clicking the heart icon.",
+      title: "Favorites",
+      empty: "No favorites",
+      emptyDesc: "Add deals to favorites by clicking the heart icon.",
     },
 
     // Settings page
@@ -312,8 +359,12 @@ export const translations = {
       currentTotal: "Current total",
       save: "Save Weights",
       saving: "Saving...",
+      saveSuccess: "Weights saved successfully!",
+      saveFailed: "Failed to save weights",
       recalculate: "Recalculate Scores",
       recalculating: "Recalculating...",
+      recalculateSuccess: "Recalculated scores for",
+      recalculateFailed: "Failed to recalculate scores",
       resetDefaults: "Reset to Defaults",
       howItWorks: "How It Works",
       howItWorksDesc: "The algorithm calculates a 0-100 score for each listing based on the configured weights.",
@@ -322,15 +373,40 @@ export const translations = {
     // Admin page
     admin: {
       title: "Admin Dashboard",
+      description: "Manage the scraper and view database statistics.",
       stats: "Statistics",
       totalListings: "Total Listings",
       activeListings: "Active Listings",
       belowMarket: "Below Market",
+      inMarket: "At Market",
+      aboveMarket: "Above Market",
       lastScrape: "Last Scrape",
       scrapeHistory: "Scrape History",
       topMakes: "Top Makes",
       runScraper: "Run Scraper",
       running: "Running...",
+      scraperControls: "Scraper Controls",
+      idle: "Idle",
+      progress: "Progress",
+      page: "Page",
+      listingsFound: "listings found",
+      listings: "listings",
+      scraping: "Scraping...",
+      startScrape: "Start Scrape",
+      scraperStarted: "Scraper started! Check progress below.",
+      scrapeCompleted: "Scraping completed! Stats updated.",
+      failedToStart: "Failed to start scraper",
+      dbStats: "Database Statistics",
+      when: "When",
+      status: "Status",
+      pages: "Pages",
+      found: "Found",
+      new: "New",
+      updated: "Updated",
+      unavailable: "Unavailable",
+      statusCompleted: "Completed",
+      statusRunning: "Running",
+      statusFailed: "Failed",
     },
 
     // Detail page

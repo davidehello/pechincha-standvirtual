@@ -5,6 +5,18 @@ import { RangeSlider, MultiSelect, Checkbox, Button } from "@/components/ui";
 import { formatPrice, formatMileage } from "@/lib/utils/format";
 import { useLanguage } from "@/lib/i18n";
 
+/**
+ * Format make/model name for display
+ * Removes hyphens and capitalizes first letter of each word
+ */
+function formatDisplayName(name: string): string {
+  return name
+    .replace(/-/g, " ")
+    .split(" ")
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(" ");
+}
+
 interface FilterPanelProps {
   filters: TFilterOptions;
   onChange: (filters: TFilterOptions) => void;
@@ -54,8 +66,8 @@ export function FilterPanel({
     onChange({ ...filters, [key]: value });
   };
 
-  const makeOptions = makes.map((m) => ({ value: m, label: m }));
-  const modelOptions = models.map((m) => ({ value: m, label: m }));
+  const makeOptions = makes.map((m) => ({ value: m, label: formatDisplayName(m) }));
+  const modelOptions = models.map((m) => ({ value: m, label: formatDisplayName(m) }));
   const regionOptions = regions.map((r) => ({ value: r, label: r }));
 
   const hasActiveFilters = Object.values(filters).some(

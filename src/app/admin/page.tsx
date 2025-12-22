@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/layout";
 import { Button } from "@/components/ui";
 import { formatRelativeDate } from "@/lib/utils/format";
+import { useLanguage } from "@/lib/i18n";
 
 interface ScrapeRun {
   id: number;
@@ -39,6 +40,7 @@ interface ScraperStatus {
 }
 
 export default function AdminPage() {
+  const { language, t } = useLanguage();
   const [stats, setStats] = useState<Stats | null>(null);
   const [scraperStatus, setScraperStatus] = useState<ScraperStatus>({
     isRunning: false,
@@ -67,7 +69,7 @@ export default function AdminPage() {
 
       // Detect when scraper finishes (was running, now not running)
       if (wasRunningRef.current && !data.isRunning) {
-        setMessage("✓ Scraping completed! Stats updated.");
+        setMessage(`✓ ${t.admin.scrapeCompleted}`);
         fetchStats(); // Refresh stats to show new data
       }
 
@@ -95,14 +97,14 @@ export default function AdminPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage("Scraper started! Check progress below.");
+        setMessage(t.admin.scraperStarted);
         setScraperStatus({ isRunning: true });
         wasRunningRef.current = true; // Track that we started a scrape
       } else {
-        setMessage(data.error || "Failed to start scraper");
+        setMessage(data.error || t.admin.failedToStart);
       }
     } catch (error) {
-      setMessage("Failed to start scraper");
+      setMessage(t.admin.failedToStart);
     } finally {
       setTriggerLoading(false);
     }
@@ -126,9 +128,9 @@ export default function AdminPage() {
       <Header />
 
       <main className="max-w-4xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-2">Admin Dashboard</h1>
+        <h1 className="text-2xl font-bold mb-2">{t.admin.title}</h1>
         <p className="text-muted-foreground mb-8">
-          Manage the scraper and view database statistics.
+          {t.admin.description}
         </p>
 
         {isLoading ? (
@@ -145,7 +147,7 @@ export default function AdminPage() {
             {/* Scraper Controls */}
             <div className="p-6 rounded-lg border border-border bg-card">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold">Scraper Controls</h2>
+                <h2 className="text-lg font-semibold">{t.admin.scraperControls}</h2>
                 <div className="flex items-center gap-2">
                   <span
                     className={`h-2 w-2 rounded-full ${
@@ -155,7 +157,7 @@ export default function AdminPage() {
                     }`}
                   />
                   <span className="text-sm text-muted-foreground">
-                    {scraperStatus.isRunning ? "Running" : "Idle"}
+                    {scraperStatus.isRunning ? t.admin.running : t.admin.idle}
                   </span>
                 </div>
               </div>
@@ -163,9 +165,9 @@ export default function AdminPage() {
               {scraperStatus.isRunning && scraperStatus.progress && (
                 <div className="mb-4 p-4 rounded-md bg-muted">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium">Progress</span>
+                    <span className="text-sm font-medium">{t.admin.progress}</span>
                     <span className="text-sm text-muted-foreground">
-                      Page {scraperStatus.progress.currentPage}/
+                      {t.admin.page} {scraperStatus.progress.currentPage}/
                       {scraperStatus.progress.totalPages}
                     </span>
                   </div>
@@ -183,7 +185,7 @@ export default function AdminPage() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-2">
                     {scraperStatus.progress.listingsFound.toLocaleString()}{" "}
-                    listings found
+                    {t.admin.listingsFound}
                   </p>
                 </div>
               )}
@@ -193,7 +195,7 @@ export default function AdminPage() {
                 disabled={scraperStatus.isRunning || triggerLoading}
                 isLoading={triggerLoading}
               >
-                {scraperStatus.isRunning ? "Scraping..." : "Start Scrape"}
+                {scraperStatus.isRunning ? t.admin.scraping : t.admin.startScrape}
               </Button>
 
               {message && (
@@ -211,7 +213,7 @@ export default function AdminPage() {
 
             {/* Database Stats */}
             <div className="p-6 rounded-lg border border-border bg-card">
-              <h2 className="text-lg font-semibold mb-4">Database Statistics</h2>
+              <h2 className="text-lg font-semibold mb-4">{t.admin.dbStats}</h2>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <div className="p-4 rounded-md bg-muted">
@@ -219,26 +221,26 @@ export default function AdminPage() {
                     {(stats?.activeListings ?? 0).toLocaleString()}
                   </p>
                   <p className="text-sm text-muted-foreground">
-                    Active Listings
+                    {t.admin.activeListings}
                   </p>
                 </div>
                 <div className="p-4 rounded-md bg-muted">
                   <p className="text-2xl font-bold text-success">
                     {(stats?.belowMarketCount ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground">Below Market</p>
+                  <p className="text-sm text-muted-foreground">{t.admin.belowMarket}</p>
                 </div>
                 <div className="p-4 rounded-md bg-muted">
                   <p className="text-2xl font-bold">
                     {(stats?.inMarketCount ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground">In Market</p>
+                  <p className="text-sm text-muted-foreground">{t.admin.inMarket}</p>
                 </div>
                 <div className="p-4 rounded-md bg-muted">
                   <p className="text-2xl font-bold text-destructive">
                     {(stats?.aboveMarketCount ?? 0).toLocaleString()}
                   </p>
-                  <p className="text-sm text-muted-foreground">Above Market</p>
+                  <p className="text-sm text-muted-foreground">{t.admin.aboveMarket}</p>
                 </div>
               </div>
             </div>
@@ -246,18 +248,18 @@ export default function AdminPage() {
             {/* Scrape Run History */}
             {stats?.scrapeHistory && stats.scrapeHistory.length > 0 && (
               <div className="p-6 rounded-lg border border-border bg-card">
-                <h2 className="text-lg font-semibold mb-4">Scrape History</h2>
+                <h2 className="text-lg font-semibold mb-4">{t.admin.scrapeHistory}</h2>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border">
-                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">When</th>
-                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">Status</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Pages</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Found</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">New</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Updated</th>
-                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">Unavailable</th>
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">{t.admin.when}</th>
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">{t.admin.status}</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.pages}</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.found}</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.new}</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.updated}</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.unavailable}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -265,7 +267,7 @@ export default function AdminPage() {
                         <tr key={run.id} className="border-b border-border/50 hover:bg-muted/30">
                           <td className="py-2 px-2">
                             {run.completedAt
-                              ? formatRelativeDate(new Date(run.completedAt))
+                              ? formatRelativeDate(new Date(run.completedAt), language)
                               : "—"}
                           </td>
                           <td className={`py-2 px-2 capitalize ${getStatusColor(run.status)}`}>
@@ -287,7 +289,7 @@ export default function AdminPage() {
             {/* Top Makes */}
             {stats?.topMakes && stats.topMakes.length > 0 && (
               <div className="p-6 rounded-lg border border-border bg-card">
-                <h2 className="text-lg font-semibold mb-4">Top Makes</h2>
+                <h2 className="text-lg font-semibold mb-4">{t.admin.topMakes}</h2>
                 <div className="space-y-2">
                   {stats.topMakes.map((item) => (
                     <div
@@ -296,7 +298,7 @@ export default function AdminPage() {
                     >
                       <span className="text-sm font-medium">{item.make}</span>
                       <span className="text-sm text-muted-foreground">
-                        {item.count.toLocaleString()} listings
+                        {item.count.toLocaleString()} {t.admin.listings}
                       </span>
                     </div>
                   ))}

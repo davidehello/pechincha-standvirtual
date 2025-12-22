@@ -28,16 +28,16 @@ export function DealCard({ listing, onSave, isSaved }: DealCardProps) {
   const isNew = isNewListing(listing.listingDate);
   const listingDateStr = formatListingDate(listing.listingDate, language);
 
-  // Parse score breakdown
+  // Parse score breakdown - handle both new format {priceVsSegment: {score: X}} and direct values
   const rawBreakdown = listing.scoreBreakdown
     ? JSON.parse(listing.scoreBreakdown)
     : null;
   const scoreBreakdown: TScoreBreakdown | null = rawBreakdown
     ? {
-        priceVsSegment: rawBreakdown.priceVsSegment?.score ?? 0,
-        priceEvaluation: rawBreakdown.priceEvaluation?.score ?? 0,
-        mileageQuality: rawBreakdown.mileageQuality?.score ?? 0,
-        pricePerKm: rawBreakdown.pricePerKm?.score ?? 0,
+        priceVsSegment: rawBreakdown.priceVsSegment?.score ?? rawBreakdown.priceVsSegment ?? 0,
+        priceEvaluation: rawBreakdown.priceEvaluation?.score ?? rawBreakdown.priceEvaluation ?? 0,
+        mileageQuality: rawBreakdown.mileageQuality?.score ?? rawBreakdown.mileageQuality ?? 0,
+        pricePerKm: rawBreakdown.pricePerKm?.score ?? rawBreakdown.pricePerKm ?? 0,
         total: score,
       }
     : null;
@@ -67,7 +67,7 @@ export function DealCard({ listing, onSave, isSaved }: DealCardProps) {
           onMouseLeave={() => setShowTooltip(false)}
         >
           <div
-            className={`px-2.5 py-1 rounded-md text-sm font-bold shadow-md cursor-help ${
+            className={`px-2.5 py-1.5 rounded-md shadow-md cursor-help text-center ${
               score >= 80
                 ? "bg-emerald-500 text-white"
                 : score >= 60
@@ -75,53 +75,58 @@ export function DealCard({ listing, onSave, isSaved }: DealCardProps) {
                   : "bg-slate-600 text-white"
             }`}
           >
-            {score.toFixed(0)}
+            <div className="text-[9px] uppercase tracking-wide opacity-90 leading-none mb-0.5">
+              {t.card.score}
+            </div>
+            <div className="text-sm font-bold leading-none">
+              {score.toFixed(0)}
+            </div>
           </div>
 
           {/* Score breakdown tooltip */}
           {showTooltip && scoreBreakdown && (
-            <div className="absolute top-full right-0 mt-1 z-50 w-48 p-3 rounded-lg bg-popover border border-border shadow-lg text-xs">
-              <p className="font-semibold text-foreground mb-2">
+            <div className="absolute top-full right-0 mt-1 z-50 w-48 p-3 rounded-lg bg-zinc-900 dark:bg-zinc-800 border border-zinc-700 shadow-xl text-xs">
+              <p className="font-semibold text-white mb-2">
                 {t.scoreBreakdown.title}
               </p>
               <div className="space-y-1.5">
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
+                  <span className="text-zinc-400">
                     {t.scoreBreakdown.priceVsSegment}
                   </span>
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-white">
                     {scoreBreakdown.priceVsSegment.toFixed(0)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
+                  <span className="text-zinc-400">
                     {t.scoreBreakdown.priceEvaluation}
                   </span>
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-white">
                     {scoreBreakdown.priceEvaluation.toFixed(0)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
+                  <span className="text-zinc-400">
                     {t.scoreBreakdown.mileageQuality}
                   </span>
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-white">
                     {scoreBreakdown.mileageQuality.toFixed(0)}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
+                  <span className="text-zinc-400">
                     {t.scoreBreakdown.pricePerKm}
                   </span>
-                  <span className="font-medium text-foreground">
+                  <span className="font-medium text-white">
                     {scoreBreakdown.pricePerKm.toFixed(0)}
                   </span>
                 </div>
-                <div className="border-t border-border pt-1.5 mt-1.5 flex justify-between">
-                  <span className="font-semibold text-foreground">
+                <div className="border-t border-zinc-700 pt-1.5 mt-1.5 flex justify-between">
+                  <span className="font-semibold text-white">
                     {t.scoreBreakdown.total}
                   </span>
-                  <span className="font-bold text-foreground">
+                  <span className="font-bold text-white">
                     {score.toFixed(0)}
                   </span>
                 </div>
@@ -137,52 +142,55 @@ export function DealCard({ listing, onSave, isSaved }: DealCardProps) {
           </div>
         )}
 
-        {/* Save button */}
-        {onSave && (
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onSave(listing.id);
-            }}
-            className={`absolute bottom-2 right-2 p-1.5 rounded-full transition-colors ${
-              isSaved
-                ? "bg-primary text-primary-foreground"
-                : "bg-background/80 text-foreground hover:bg-background"
+        {/* Price change badge */}
+        {listing.priceInfo?.hasPriceChanges && listing.priceInfo.priceChangePercent !== null && (
+          <div
+            className={`absolute bottom-2 left-2 px-2 py-1 rounded text-xs font-semibold flex items-center gap-1 ${
+              listing.priceInfo.priceChangePercent < 0
+                ? "bg-emerald-500 text-white"
+                : "bg-orange-500 text-white"
             }`}
-            aria-label={isSaved ? "Remove from saved" : "Save deal"}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill={isSaved ? "currentColor" : "none"}
-              stroke="currentColor"
-              strokeWidth={2}
-              className="w-4 h-4"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
-              />
-            </svg>
-          </button>
+            {listing.priceInfo.priceChangePercent < 0 ? (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                <path fillRule="evenodd" d="M10 3a.75.75 0 01.75.75v10.638l3.96-4.158a.75.75 0 111.08 1.04l-5.25 5.5a.75.75 0 01-1.08 0l-5.25-5.5a.75.75 0 111.08-1.04l3.96 4.158V3.75A.75.75 0 0110 3z" clipRule="evenodd" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3 h-3">
+                <path fillRule="evenodd" d="M10 17a.75.75 0 01-.75-.75V5.612L5.29 9.77a.75.75 0 01-1.08-1.04l5.25-5.5a.75.75 0 011.08 0l5.25 5.5a.75.75 0 11-1.08 1.04l-3.96-4.158V16.25A.75.75 0 0110 17z" clipRule="evenodd" />
+              </svg>
+            )}
+            {Math.abs(listing.priceInfo.priceChangePercent).toFixed(0)}%
+          </div>
         )}
       </div>
 
       {/* Content */}
       <div className="flex-1 p-3 flex flex-col">
         <Link href={`/deals/${listing.id}`} className="flex-1">
-          {/* Title */}
-          <h3 className="font-medium text-sm line-clamp-2 mb-2 group-hover:text-primary transition-colors">
-            {listing.title}
-          </h3>
+          {/* Title row with published date */}
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <h3 className="font-medium text-sm line-clamp-2 group-hover:text-primary transition-colors flex-1">
+              {listing.title}
+            </h3>
+            {listingDateStr && (
+              <span className="text-xs text-muted-foreground whitespace-nowrap shrink-0">
+                {listingDateStr}
+              </span>
+            )}
+          </div>
 
           {/* Price and evaluation row */}
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center flex-wrap gap-2 mb-3">
             <span className="text-lg font-bold">
               {formatPrice(listing.price)}
             </span>
+            {/* Show previous price with strikethrough if there was a price change */}
+            {listing.priceInfo?.hasPriceChanges && listing.priceInfo.previousPrice && (
+              <span className="text-sm text-muted-foreground line-through">
+                {formatPrice(listing.priceInfo.previousPrice)}
+              </span>
+            )}
             {listing.priceEvaluation && (
               <span
                 className={`px-2 py-0.5 rounded text-xs font-medium border ${getPriceEvaluationColor(listing.priceEvaluation)}`}
@@ -248,25 +256,6 @@ export function DealCard({ listing, onSave, isSaved }: DealCardProps) {
               </div>
             )}
           </div>
-
-          {/* Listing date */}
-          {listingDateStr && (
-            <div className="text-xs text-muted-foreground flex items-center gap-1">
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-                className="w-3 h-3"
-              >
-                <path
-                  fillRule="evenodd"
-                  d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-13a.75.75 0 00-1.5 0v5c0 .414.336.75.75.75h4a.75.75 0 000-1.5h-3.25V5z"
-                  clipRule="evenodd"
-                />
-              </svg>
-              <span>{t.card.published}: {listingDateStr}</span>
-            </div>
-          )}
         </Link>
 
         {/* View in StandVirtual button */}
@@ -296,6 +285,38 @@ export function DealCard({ listing, onSave, isSaved }: DealCardProps) {
           </svg>
           {t.card.viewInStandVirtual}
         </a>
+
+        {/* Add to Favorites button */}
+        {onSave && (
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onSave(listing.id);
+            }}
+            className={`mt-2 flex items-center justify-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-colors border ${
+              isSaved
+                ? "bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20"
+                : "bg-muted text-muted-foreground border-border hover:bg-muted/80"
+            }`}
+          >
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill={isSaved ? "currentColor" : "none"}
+              stroke="currentColor"
+              strokeWidth={2}
+              className="w-4 h-4"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z"
+              />
+            </svg>
+            {isSaved ? t.card.removeFromFavorites : t.card.addToFavorites}
+          </button>
+        )}
       </div>
     </div>
   );

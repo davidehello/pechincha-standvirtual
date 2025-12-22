@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "StandVirtual Analisador | Encontre as Melhores Ofertas de Carros Usados",
+  title: "Caça Pechinchas | Encontre as Melhores Ofertas de Carros Usados",
   description:
     "Descubra carros usados subvalorizados do StandVirtual. Algoritmo avançado de pontuação encontra os melhores negócios com base no preço, quilometragem e comparação de mercado.",
 };

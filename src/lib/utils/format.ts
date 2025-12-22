@@ -36,6 +36,8 @@ export function formatEnginePower(power: number): string {
 
 /**
  * Format date relative to now (for PT)
+ * Shows relative time (e.g., "15 minutos atrás") for up to 2 days
+ * After 2 days, shows absolute date
  */
 export function formatRelativeDate(
   date: Date,
@@ -49,14 +51,20 @@ export function formatRelativeDate(
 
   if (lang === "pt") {
     if (diffMins < 1) return "agora";
-    if (diffMins < 60) return `${diffMins} min`;
-    if (diffHours < 24) return `${diffHours}h`;
-    if (diffDays < 7) return `${diffDays}d`;
+    if (diffMins === 1) return "1 minuto atrás";
+    if (diffMins < 60) return `${diffMins} minutos atrás`;
+    if (diffHours === 1) return "1 hora atrás";
+    if (diffHours < 24) return `${diffHours} horas atrás`;
+    if (diffDays === 1) return "1 dia atrás";
+    if (diffDays < 2) return `${diffDays} dias atrás`;
   } else {
     if (diffMins < 1) return "now";
-    if (diffMins < 60) return `${diffMins}m`;
-    if (diffHours < 24) return `${diffHours}h`;
-    if (diffDays < 7) return `${diffDays}d`;
+    if (diffMins === 1) return "1 minute ago";
+    if (diffMins < 60) return `${diffMins} minutes ago`;
+    if (diffHours === 1) return "1 hour ago";
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays === 1) return "1 day ago";
+    if (diffDays < 2) return `${diffDays} days ago`;
   }
 
   return formatAbsoluteDate(date);

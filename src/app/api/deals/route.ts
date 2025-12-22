@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, listings } from "@/lib/db";
-import { and, gte, lte, inArray, desc, asc, sql } from "drizzle-orm";
+import { priceHistory } from "@/lib/db/schema";
+import { and, gte, lte, inArray, desc, asc, sql, eq } from "drizzle-orm";
 import { z } from "zod";
 
 const QuerySchema = z.object({
@@ -137,8 +138,80 @@ export async function GET(request: NextRequest) {
       .limit(query.pageSize)
       .offset((query.page - 1) * query.pageSize);
 
+    // Get price history counts and latest price change for each deal
+    const dealIds = deals.map((d) => d.id);
+
+    // Get listings with price changes (more than 1 price history entry)
+    const priceChanges = dealIds.length > 0
+      ? await db
+          .select({
+            listingId: priceHistory.listingId,
+            count: sql<number>`count(*)`,
+            minPrice: sql<number>`min(${priceHistory.price})`,
+            maxPrice: sql<number>`max(${priceHistory.price})`,
+          })
+          .from(priceHistory)
+          .where(inArray(priceHistory.listingId, dealIds))
+          .groupBy(priceHistory.listingId)
+      : [];
+
+    // Get the most recent two prices for each listing to calculate the change
+    const recentPrices = dealIds.length > 0
+      ? await db
+          .select({
+            listingId: priceHistory.listingId,
+            price: priceHistory.price,
+            recordedAt: priceHistory.recordedAt,
+          })
+          .from(priceHistory)
+          .where(inArray(priceHistory.listingId, dealIds))
+          .orderBy(desc(priceHistory.recordedAt))
+      : [];
+
+    // Build price change map
+    const priceChangeMap = new Map<string, {
+      hasPriceChanges: boolean;
+      priceChangePercent: number | null;
+      priceChangeAmount: number | null;
+      previousPrice: number | null;
+    }>();
+
+    for (const change of priceChanges) {
+      if (change.count > 1) {
+        // Find the two most recent prices for this listing
+        const listingPrices = recentPrices
+          .filter((p) => p.listingId === change.listingId)
+          .slice(0, 2);
+
+        if (listingPrices.length >= 2) {
+          const currentPrice = listingPrices[0].price;
+          const previousPrice = listingPrices[1].price;
+          const changeAmount = currentPrice - previousPrice;
+          const changePercent = (changeAmount / previousPrice) * 100;
+
+          priceChangeMap.set(change.listingId, {
+            hasPriceChanges: true,
+            priceChangePercent: changePercent,
+            priceChangeAmount: changeAmount,
+            previousPrice: previousPrice,
+          });
+        }
+      }
+    }
+
+    // Enrich deals with price change info
+    const enrichedDeals = deals.map((deal) => ({
+      ...deal,
+      priceInfo: priceChangeMap.get(deal.id) || {
+        hasPriceChanges: false,
+        priceChangePercent: null,
+        priceChangeAmount: null,
+        previousPrice: null,
+      },
+    }));
+
     return NextResponse.json({
-      deals,
+      deals: enrichedDeals,
       total,
       page: query.page,
       pageSize: query.pageSize,

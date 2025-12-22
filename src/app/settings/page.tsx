@@ -4,8 +4,10 @@ import { useState, useEffect } from "react";
 import { Header } from "@/components/layout";
 import { Button, RangeSlider } from "@/components/ui";
 import { TAlgorithmWeights, DEFAULT_WEIGHTS } from "@/types";
+import { useLanguage } from "@/lib/i18n";
 
 export default function SettingsPage() {
+  const { t } = useLanguage();
   const [weights, setWeights] = useState<TAlgorithmWeights>(DEFAULT_WEIGHTS);
   const [isSaving, setIsSaving] = useState(false);
   const [isRecalculating, setIsRecalculating] = useState(false);
@@ -44,12 +46,12 @@ export default function SettingsPage() {
       });
 
       if (res.ok) {
-        setMessage("Weights saved successfully!");
+        setMessage(t.settings.saveSuccess);
       } else {
-        setMessage("Failed to save weights");
+        setMessage(t.settings.saveFailed);
       }
     } catch (error) {
-      setMessage("Failed to save weights");
+      setMessage(t.settings.saveFailed);
     } finally {
       setIsSaving(false);
     }
@@ -70,12 +72,12 @@ export default function SettingsPage() {
       const data = await res.json();
 
       if (res.ok) {
-        setMessage(`Recalculated scores for ${data.updatedCount.toLocaleString()} listings`);
+        setMessage(`${t.settings.recalculateSuccess} ${data.updatedCount.toLocaleString()}`);
       } else {
-        setMessage("Failed to recalculate scores");
+        setMessage(t.settings.recalculateFailed);
       }
     } catch (error) {
-      setMessage("Failed to recalculate scores");
+      setMessage(t.settings.recalculateFailed);
     } finally {
       setIsRecalculating(false);
     }
@@ -94,21 +96,20 @@ export default function SettingsPage() {
       <Header />
 
       <main className="max-w-2xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-2">Algorithm Settings</h1>
+        <h1 className="text-2xl font-bold mb-2">{t.settings.title}</h1>
         <p className="text-muted-foreground mb-8">
-          Adjust the weights of each scoring component to customize how deals
-          are ranked. The weights should add up to 100%.
+          {t.settings.weightsDesc}
         </p>
 
         <div className="space-y-8">
           {/* Weight sliders */}
           <div className="space-y-6 p-6 rounded-lg border border-border bg-card">
-            <h2 className="text-lg font-semibold">Scoring Weights</h2>
+            <h2 className="text-lg font-semibold">{t.settings.weightsTitle}</h2>
 
             <div className="space-y-6">
               <div>
                 <RangeSlider
-                  label="Price vs Segment"
+                  label={t.settings.priceVsSegment}
                   min={0}
                   max={100}
                   step={5}
@@ -119,14 +120,13 @@ export default function SettingsPage() {
                   formatValue={(v) => `${v}%`}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  How cheap the car is compared to similar vehicles (same
-                  make/model/year/fuel)
+                  {t.settings.priceVsSegmentDesc}
                 </p>
               </div>
 
               <div>
                 <RangeSlider
-                  label="Price Evaluation"
+                  label={t.settings.priceEvaluation}
                   min={0}
                   max={100}
                   step={5}
@@ -137,13 +137,13 @@ export default function SettingsPage() {
                   formatValue={(v) => `${v}%`}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  StandVirtual&apos;s own market evaluation (BELOW/IN/ABOVE)
+                  {t.settings.priceEvaluationDesc}
                 </p>
               </div>
 
               <div>
                 <RangeSlider
-                  label="Mileage Quality"
+                  label={t.settings.mileageQuality}
                   min={0}
                   max={100}
                   step={5}
@@ -154,14 +154,13 @@ export default function SettingsPage() {
                   formatValue={(v) => `${v}%`}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Low mileage relative to the car&apos;s age (expected 15k
-                  km/year)
+                  {t.settings.mileageQualityDesc}
                 </p>
               </div>
 
               <div>
                 <RangeSlider
-                  label="Price per Km"
+                  label={t.settings.pricePerKm}
                   min={0}
                   max={100}
                   step={5}
@@ -172,7 +171,7 @@ export default function SettingsPage() {
                   formatValue={(v) => `${v}%`}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Value efficiency - lower price per kilometer driven is better
+                  {t.settings.pricePerKmDesc}
                 </p>
               </div>
             </div>
@@ -185,7 +184,7 @@ export default function SettingsPage() {
                   : "bg-destructive/10 text-destructive"
               }`}
             >
-              <span className="font-medium">Total Weight</span>
+              <span className="font-medium">{t.settings.total}</span>
               <span className="font-bold">
                 {(totalWeight * 100).toFixed(0)}%
               </span>
@@ -193,7 +192,7 @@ export default function SettingsPage() {
 
             {!isValid && (
               <p className="text-sm text-destructive">
-                Weights must add up to 100%. Current total:{" "}
+                {t.settings.mustEqual100} {t.settings.currentTotal}:{" "}
                 {(totalWeight * 100).toFixed(0)}%
               </p>
             )}
@@ -202,24 +201,24 @@ export default function SettingsPage() {
           {/* Actions */}
           <div className="flex items-center gap-4">
             <Button onClick={handleSave} disabled={!isValid || isSaving}>
-              {isSaving ? "Saving..." : "Save Weights"}
+              {isSaving ? t.settings.saving : t.settings.save}
             </Button>
             <Button
               variant="secondary"
               onClick={handleRecalculate}
               disabled={isRecalculating}
             >
-              {isRecalculating ? "Recalculating..." : "Recalculate Scores"}
+              {isRecalculating ? t.settings.recalculating : t.settings.recalculate}
             </Button>
             <Button variant="secondary" onClick={handleReset}>
-              Reset to Defaults
+              {t.settings.resetDefaults}
             </Button>
           </div>
 
           {message && (
             <p
               className={`text-sm ${
-                message.includes("success") || message.includes("Recalculated")
+                message.includes(t.settings.saveSuccess) || message.includes(t.settings.recalculateSuccess)
                   ? "text-success"
                   : "text-destructive"
               }`}
@@ -230,50 +229,10 @@ export default function SettingsPage() {
 
           {/* Explanation */}
           <div className="p-6 rounded-lg border border-border bg-card">
-            <h2 className="text-lg font-semibold mb-4">How Scoring Works</h2>
-            <div className="space-y-4 text-sm text-muted-foreground">
-              <div>
-                <h3 className="font-medium text-foreground">
-                  Price vs Segment (Default: 35%)
-                </h3>
-                <p>
-                  Compares the car&apos;s price against similar vehicles with
-                  the same make, model, fuel type, and year range. A car priced
-                  at the segment minimum gets 100 points, while one at the
-                  maximum gets 0.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-medium text-foreground">
-                  Price Evaluation (Default: 25%)
-                </h3>
-                <p>
-                  Uses StandVirtual&apos;s built-in market analysis. BELOW
-                  market = 100 points, IN market = 50 points, ABOVE market = 0
-                  points.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-medium text-foreground">
-                  Mileage Quality (Default: 25%)
-                </h3>
-                <p>
-                  Based on expected 15,000 km/year. A car with 50% of expected
-                  mileage gets 100 points, 100% gets 50 points, and 150%+ gets 0
-                  points.
-                </p>
-              </div>
-              <div>
-                <h3 className="font-medium text-foreground">
-                  Price per Km (Default: 15%)
-                </h3>
-                <p>
-                  Calculates value efficiency (price / mileage). Lower cost per
-                  kilometer driven relative to the segment average scores
-                  higher.
-                </p>
-              </div>
-            </div>
+            <h2 className="text-lg font-semibold mb-4">{t.settings.howItWorks}</h2>
+            <p className="text-sm text-muted-foreground">
+              {t.settings.howItWorksDesc}
+            </p>
           </div>
         </div>
       </main>

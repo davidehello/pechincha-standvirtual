@@ -2,6 +2,14 @@
  * Core types for Car Deal Finder
  */
 
+// Price info from price history
+export interface TPriceInfo {
+  hasPriceChanges: boolean;
+  priceChangePercent: number | null;
+  priceChangeAmount: number | null;
+  previousPrice: number | null;
+}
+
 // Listing type from database
 export interface TListing {
   id: string;
@@ -31,6 +39,7 @@ export interface TListing {
   firstSeenAt: Date | null;
   lastSeenAt: Date | null;
   createdAt: Date | null;
+  priceInfo?: TPriceInfo;
 }
 
 // Score breakdown stored as JSON
