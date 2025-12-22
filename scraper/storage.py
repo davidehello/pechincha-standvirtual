@@ -124,28 +124,35 @@ class Storage:
     def _get_connection(self):
         """Get database connection with performance optimizations"""
         if self.use_turso:
-            # Use Turso (libSQL)
+            # Use Turso (libSQL) - no row_factory support
             conn = libsql.connect(
                 database=TURSO_DATABASE_URL,
                 auth_token=TURSO_AUTH_TOKEN
             )
+            try:
+                yield conn
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
         else:
             # Use local SQLite
             conn = sqlite3.connect(self.db_path)
             conn.execute("PRAGMA journal_mode=WAL")
-            conn.execute("PRAGMA synchronous=NORMAL")  # Faster than FULL, still safe with WAL
-            conn.execute("PRAGMA cache_size=-64000")   # 64MB cache
-            conn.execute("PRAGMA temp_store=MEMORY")   # Temp tables in memory
-
-        conn.row_factory = sqlite3.Row
-        try:
-            yield conn
-            conn.commit()
-        except Exception:
-            conn.rollback()
-            raise
-        finally:
-            conn.close()
+            conn.execute("PRAGMA synchronous=NORMAL")
+            conn.execute("PRAGMA cache_size=-64000")
+            conn.execute("PRAGMA temp_store=MEMORY")
+            conn.row_factory = sqlite3.Row
+            try:
+                yield conn
+                conn.commit()
+            except Exception:
+                conn.rollback()
+                raise
+            finally:
+                conn.close()
 
     def upsert_listing(self, listing: dict) -> tuple[bool, bool]:
         """
