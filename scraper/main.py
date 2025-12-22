@@ -10,6 +10,7 @@ import logging
 import argparse
 import asyncio
 from typing import Optional
+from pathlib import Path
 
 from config import MAX_PAGES
 from client import GraphQLClient, RateLimitError
@@ -238,7 +239,22 @@ class AsyncScraper:
                 remaining_pages = list(range(2, total_pages + 1))
 
                 if remaining_pages:
+                    # Write progress to checkpoint file for status API
+                    progress_file = Path(__file__).parent / "data" / "checkpoint.json"
+                    progress_file.parent.mkdir(parents=True, exist_ok=True)
+
                     def progress_callback(completed, total):
+                        # Write progress to file every 10 pages for real-time UI updates
+                        if completed % 10 == 0 or completed == total:
+                            import json as json_module
+                            progress_data = {
+                                "last_page": completed + 1,  # +1 because we already processed page 1
+                                "total_pages": total + 1,
+                                "listings_found": total_found + (completed * 32),  # Estimate
+                                "status": "running"
+                            }
+                            progress_file.write_text(json_module.dumps(progress_data))
+
                         if completed % 100 == 0 or completed == total:
                             elapsed = time.time() - start_time
                             rate = completed / elapsed * 60 if elapsed > 0 else 0
