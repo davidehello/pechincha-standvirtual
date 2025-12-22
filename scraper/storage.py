@@ -39,86 +39,85 @@ class Storage:
 
     def _ensure_tables(self):
         """Create tables if they don't exist"""
+        # Define all table creation statements
+        statements = [
+            # Main listings table
+            """CREATE TABLE IF NOT EXISTS listings (
+                id TEXT PRIMARY KEY,
+                title TEXT NOT NULL,
+                url TEXT NOT NULL,
+                price INTEGER NOT NULL,
+                price_evaluation TEXT,
+                make TEXT NOT NULL,
+                model TEXT NOT NULL,
+                version TEXT,
+                year INTEGER NOT NULL,
+                mileage INTEGER,
+                fuel_type TEXT,
+                gearbox TEXT,
+                engine_capacity INTEGER,
+                engine_power INTEGER,
+                city TEXT,
+                region TEXT,
+                seller_name TEXT,
+                seller_type TEXT,
+                thumbnail_url TEXT,
+                badges TEXT,
+                deal_score REAL,
+                score_breakdown TEXT,
+                is_active INTEGER DEFAULT 1,
+                listing_date INTEGER,
+                first_seen_at INTEGER,
+                last_seen_at INTEGER,
+                created_at INTEGER
+            )""",
+            # Scrape runs table
+            """CREATE TABLE IF NOT EXISTS scrape_runs (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                status TEXT NOT NULL,
+                started_at INTEGER,
+                completed_at INTEGER,
+                pages_scraped INTEGER DEFAULT 0,
+                listings_found INTEGER DEFAULT 0,
+                listings_new INTEGER DEFAULT 0,
+                listings_updated INTEGER DEFAULT 0,
+                listings_inactive INTEGER DEFAULT 0,
+                error_message TEXT
+            )""",
+            # Saved deals table
+            """CREATE TABLE IF NOT EXISTS saved_deals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                listing_id TEXT NOT NULL REFERENCES listings(id),
+                notes TEXT,
+                saved_at INTEGER
+            )""",
+            # Price history table
+            """CREATE TABLE IF NOT EXISTS price_history (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                listing_id TEXT NOT NULL REFERENCES listings(id),
+                price INTEGER NOT NULL,
+                recorded_at INTEGER
+            )""",
+            # Settings table
+            """CREATE TABLE IF NOT EXISTS settings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                key TEXT NOT NULL UNIQUE,
+                value TEXT,
+                updated_at INTEGER
+            )""",
+            # Indexes for performance
+            "CREATE INDEX IF NOT EXISTS idx_listings_make ON listings(make)",
+            "CREATE INDEX IF NOT EXISTS idx_listings_model ON listings(model)",
+            "CREATE INDEX IF NOT EXISTS idx_listings_price ON listings(price)",
+            "CREATE INDEX IF NOT EXISTS idx_listings_year ON listings(year)",
+            "CREATE INDEX IF NOT EXISTS idx_listings_deal_score ON listings(deal_score)",
+            "CREATE INDEX IF NOT EXISTS idx_listings_price_evaluation ON listings(price_evaluation)",
+            "CREATE INDEX IF NOT EXISTS idx_listings_region ON listings(region)",
+        ]
+
         with self._get_connection() as conn:
-            conn.executescript("""
-                -- Main listings table
-                CREATE TABLE IF NOT EXISTS listings (
-                    id TEXT PRIMARY KEY,
-                    title TEXT NOT NULL,
-                    url TEXT NOT NULL,
-                    price INTEGER NOT NULL,
-                    price_evaluation TEXT,
-                    make TEXT NOT NULL,
-                    model TEXT NOT NULL,
-                    version TEXT,
-                    year INTEGER NOT NULL,
-                    mileage INTEGER,
-                    fuel_type TEXT,
-                    gearbox TEXT,
-                    engine_capacity INTEGER,
-                    engine_power INTEGER,
-                    city TEXT,
-                    region TEXT,
-                    seller_name TEXT,
-                    seller_type TEXT,
-                    thumbnail_url TEXT,
-                    badges TEXT,
-                    deal_score REAL,
-                    score_breakdown TEXT,
-                    is_active INTEGER DEFAULT 1,
-                    listing_date INTEGER,
-                    first_seen_at INTEGER,
-                    last_seen_at INTEGER,
-                    created_at INTEGER
-                );
-
-                -- Scrape runs table
-                CREATE TABLE IF NOT EXISTS scrape_runs (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    status TEXT NOT NULL,
-                    started_at INTEGER,
-                    completed_at INTEGER,
-                    pages_scraped INTEGER DEFAULT 0,
-                    listings_found INTEGER DEFAULT 0,
-                    listings_new INTEGER DEFAULT 0,
-                    listings_updated INTEGER DEFAULT 0,
-                    listings_inactive INTEGER DEFAULT 0,
-                    error_message TEXT
-                );
-
-                -- Saved deals table
-                CREATE TABLE IF NOT EXISTS saved_deals (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    listing_id TEXT NOT NULL REFERENCES listings(id),
-                    notes TEXT,
-                    saved_at INTEGER
-                );
-
-                -- Price history table
-                CREATE TABLE IF NOT EXISTS price_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    listing_id TEXT NOT NULL REFERENCES listings(id),
-                    price INTEGER NOT NULL,
-                    recorded_at INTEGER
-                );
-
-                -- Settings table
-                CREATE TABLE IF NOT EXISTS settings (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    key TEXT NOT NULL UNIQUE,
-                    value TEXT,
-                    updated_at INTEGER
-                );
-
-                -- Indexes for performance
-                CREATE INDEX IF NOT EXISTS idx_listings_make ON listings(make);
-                CREATE INDEX IF NOT EXISTS idx_listings_model ON listings(model);
-                CREATE INDEX IF NOT EXISTS idx_listings_price ON listings(price);
-                CREATE INDEX IF NOT EXISTS idx_listings_year ON listings(year);
-                CREATE INDEX IF NOT EXISTS idx_listings_deal_score ON listings(deal_score);
-                CREATE INDEX IF NOT EXISTS idx_listings_price_evaluation ON listings(price_evaluation);
-                CREATE INDEX IF NOT EXISTS idx_listings_region ON listings(region);
-            """)
+            for statement in statements:
+                conn.execute(statement)
 
     @contextmanager
     def _get_connection(self):
@@ -278,12 +277,157 @@ class Storage:
 
     def upsert_listings(self, listings: list[dict]) -> tuple[int, int]:
         """
-        Batch upsert listings - legacy method, calls bulk_upsert_listings.
+        Batch upsert listings.
+        Uses optimized bulk operations for SQLite, row-by-row for Turso.
 
         Returns:
             Tuple of (new_count, updated_count)
         """
+        if self.use_turso:
+            # Turso doesn't support TEMP tables, use row-by-row
+            return self._turso_upsert_listings(listings)
         return self.bulk_upsert_listings(listings)
+
+    def _turso_upsert_listings(self, listings: list[dict]) -> tuple[int, int]:
+        """
+        Turso-compatible upsert using INSERT ON CONFLICT.
+        Slower than bulk operations but compatible with libsql.
+
+        Returns:
+            Tuple of (new_count, updated_count)
+        """
+        if not listings:
+            return 0, 0
+
+        now = int(time.time())
+        new_count = 0
+        updated_count = 0
+
+        with self._get_connection() as conn:
+            for listing in listings:
+                # Calculate deal score
+                score, breakdown = calculate_deal_score(listing)
+
+                # Check if exists and get current price
+                existing = conn.execute(
+                    "SELECT id, price FROM listings WHERE id = ?",
+                    (listing["id"],)
+                ).fetchone()
+
+                if existing:
+                    # Update existing listing
+                    old_price = existing[1]  # Turso returns tuple, not Row
+                    new_price = listing["price"]
+
+                    conn.execute("""
+                        UPDATE listings SET
+                            title = ?,
+                            url = ?,
+                            price = ?,
+                            price_evaluation = ?,
+                            make = ?,
+                            model = ?,
+                            version = ?,
+                            year = ?,
+                            mileage = ?,
+                            fuel_type = ?,
+                            gearbox = ?,
+                            engine_capacity = ?,
+                            engine_power = ?,
+                            city = ?,
+                            region = ?,
+                            seller_name = ?,
+                            seller_type = ?,
+                            thumbnail_url = ?,
+                            badges = ?,
+                            listing_date = COALESCE(?, listing_date),
+                            deal_score = ?,
+                            score_breakdown = ?,
+                            is_active = 1,
+                            last_seen_at = ?
+                        WHERE id = ?
+                    """, (
+                        listing["title"],
+                        listing["url"],
+                        listing["price"],
+                        listing["price_evaluation"],
+                        listing["make"],
+                        listing["model"],
+                        listing.get("version"),
+                        listing["year"],
+                        listing.get("mileage"),
+                        listing.get("fuel_type"),
+                        listing.get("gearbox"),
+                        listing.get("engine_capacity"),
+                        listing.get("engine_power"),
+                        listing.get("city"),
+                        listing.get("region"),
+                        listing.get("seller_name"),
+                        listing.get("seller_type"),
+                        listing.get("thumbnail_url"),
+                        json.dumps(listing.get("badges", [])),
+                        listing.get("listing_date"),
+                        score,
+                        json.dumps(breakdown),
+                        now,
+                        listing["id"]
+                    ))
+
+                    # Track price change
+                    if old_price != new_price:
+                        conn.execute(
+                            "INSERT INTO price_history (listing_id, price, recorded_at) VALUES (?, ?, ?)",
+                            (listing["id"], new_price, now)
+                        )
+
+                    updated_count += 1
+                else:
+                    # Insert new listing
+                    conn.execute("""
+                        INSERT INTO listings (
+                            id, title, url, price, price_evaluation,
+                            make, model, version, year, mileage,
+                            fuel_type, gearbox, engine_capacity, engine_power,
+                            city, region, seller_name, seller_type,
+                            thumbnail_url, badges, deal_score, score_breakdown, is_active,
+                            listing_date, first_seen_at, last_seen_at, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+                    """, (
+                        listing["id"],
+                        listing["title"],
+                        listing["url"],
+                        listing["price"],
+                        listing["price_evaluation"],
+                        listing["make"],
+                        listing["model"],
+                        listing.get("version"),
+                        listing["year"],
+                        listing.get("mileage"),
+                        listing.get("fuel_type"),
+                        listing.get("gearbox"),
+                        listing.get("engine_capacity"),
+                        listing.get("engine_power"),
+                        listing.get("city"),
+                        listing.get("region"),
+                        listing.get("seller_name"),
+                        listing.get("seller_type"),
+                        listing.get("thumbnail_url"),
+                        json.dumps(listing.get("badges", [])),
+                        score,
+                        json.dumps(breakdown),
+                        listing.get("listing_date"),
+                        now, now, now
+                    ))
+
+                    # Add initial price to history
+                    conn.execute(
+                        "INSERT INTO price_history (listing_id, price, recorded_at) VALUES (?, ?, ?)",
+                        (listing["id"], listing["price"], now)
+                    )
+
+                    new_count += 1
+
+        return new_count, updated_count
 
     def bulk_upsert_listings(self, listings: list[dict]) -> tuple[int, int]:
         """
