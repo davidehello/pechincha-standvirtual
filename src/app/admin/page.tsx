@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Header } from "@/components/layout";
 import { Button } from "@/components/ui";
 import { formatRelativeDate, formatCompactNumber } from "@/lib/utils/format";
@@ -42,6 +42,7 @@ export default function AdminPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [triggerLoading, setTriggerLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const wasRunningRef = useRef(false);
 
   const fetchStats = async () => {
     try {
@@ -59,6 +60,14 @@ export default function AdminPage() {
     try {
       const res = await fetch("/api/scraper/status");
       const data = await res.json();
+
+      // Detect when scraper finishes (was running, now not running)
+      if (wasRunningRef.current && !data.isRunning) {
+        setMessage("✓ Scraping completed! Stats updated.");
+        fetchStats(); // Refresh stats to show new data
+      }
+
+      wasRunningRef.current = data.isRunning;
       setScraperStatus(data);
     } catch (error) {
       console.error("Failed to fetch scraper status:", error);
@@ -84,6 +93,7 @@ export default function AdminPage() {
       if (res.ok) {
         setMessage("Scraper started! Check progress below.");
         setScraperStatus({ isRunning: true });
+        wasRunningRef.current = true; // Track that we started a scrape
       } else {
         setMessage(data.error || "Failed to start scraper");
       }
