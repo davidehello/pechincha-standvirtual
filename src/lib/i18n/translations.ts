@@ -1,8 +1,8 @@
 export const translations = {
   pt: {
     // App name
-    appName: "Analisador de Stands",
-    appNameShort: "AS",
+    appName: "StandVirtual Analisador",
+    appNameShort: "SVA",
 
     // Navigation
     nav: {
@@ -188,8 +188,8 @@ export const translations = {
 
   en: {
     // App name
-    appName: "Stand Analyzer",
-    appNameShort: "SA",
+    appName: "StandVirtual Analisador",
+    appNameShort: "SVA",
 
     // Navigation
     nav: {
