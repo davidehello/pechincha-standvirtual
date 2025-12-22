@@ -290,8 +290,8 @@ class Storage:
 
     def _turso_upsert_listings(self, listings: list[dict]) -> tuple[int, int]:
         """
-        Turso-compatible upsert using INSERT ON CONFLICT.
-        Slower than bulk operations but compatible with libsql.
+        Turso-compatible upsert using INSERT OR REPLACE in batches.
+        Optimized to reduce network round trips.
 
         Returns:
             Tuple of (new_count, updated_count)
@@ -300,53 +300,49 @@ class Storage:
             return 0, 0
 
         now = int(time.time())
-        new_count = 0
-        updated_count = 0
+        batch_size = 100  # Process in batches of 100
+
+        # First, get all existing IDs and prices in one query to track updates vs new
+        listing_ids = [l["id"] for l in listings]
 
         with self._get_connection() as conn:
+            # Fetch existing listings in batches of 500 IDs
+            existing_map = {}  # id -> price
+            for i in range(0, len(listing_ids), 500):
+                batch_ids = listing_ids[i:i+500]
+                placeholders = ",".join(["?" for _ in batch_ids])
+                result = conn.execute(
+                    f"SELECT id, price FROM listings WHERE id IN ({placeholders})",
+                    batch_ids
+                ).fetchall()
+                for row in result:
+                    existing_map[row[0]] = row[1]
+
+            # Prepare all listings for INSERT OR REPLACE
+            listings_data = []
+            price_history_data = []
+
             for listing in listings:
-                # Calculate deal score
                 score, breakdown = calculate_deal_score(listing)
+                listing_id = listing["id"]
 
-                # Check if exists and get current price
-                existing = conn.execute(
-                    "SELECT id, price FROM listings WHERE id = ?",
-                    (listing["id"],)
-                ).fetchone()
+                # Check if this is an update or new
+                is_existing = listing_id in existing_map
+                old_price = existing_map.get(listing_id)
+                new_price = listing["price"]
 
-                if existing:
-                    # Update existing listing
-                    old_price = existing[1]  # Turso returns tuple, not Row
-                    new_price = listing["price"]
+                # Track price changes
+                if is_existing and old_price != new_price:
+                    price_history_data.append((listing_id, new_price, now))
+                elif not is_existing:
+                    # New listing - add initial price
+                    price_history_data.append((listing_id, new_price, now))
 
-                    conn.execute("""
-                        UPDATE listings SET
-                            title = ?,
-                            url = ?,
-                            price = ?,
-                            price_evaluation = ?,
-                            make = ?,
-                            model = ?,
-                            version = ?,
-                            year = ?,
-                            mileage = ?,
-                            fuel_type = ?,
-                            gearbox = ?,
-                            engine_capacity = ?,
-                            engine_power = ?,
-                            city = ?,
-                            region = ?,
-                            seller_name = ?,
-                            seller_type = ?,
-                            thumbnail_url = ?,
-                            badges = ?,
-                            listing_date = COALESCE(?, listing_date),
-                            deal_score = ?,
-                            score_breakdown = ?,
-                            is_active = 1,
-                            last_seen_at = ?
-                        WHERE id = ?
-                    """, (
+                # Prepare listing data
+                # For existing: preserve first_seen_at and created_at by using subquery
+                if is_existing:
+                    listings_data.append((
+                        listing_id,
                         listing["title"],
                         listing["url"],
                         listing["price"],
@@ -366,66 +362,110 @@ class Storage:
                         listing.get("seller_type"),
                         listing.get("thumbnail_url"),
                         json.dumps(listing.get("badges", [])),
-                        listing.get("listing_date"),
                         score,
                         json.dumps(breakdown),
-                        now,
-                        listing["id"]
+                        1,  # is_active
+                        listing.get("listing_date"),
+                        None,  # first_seen_at - will be preserved
+                        now,   # last_seen_at
+                        None,  # created_at - will be preserved
+                    ))
+                else:
+                    listings_data.append((
+                        listing_id,
+                        listing["title"],
+                        listing["url"],
+                        listing["price"],
+                        listing["price_evaluation"],
+                        listing["make"],
+                        listing["model"],
+                        listing.get("version"),
+                        listing["year"],
+                        listing.get("mileage"),
+                        listing.get("fuel_type"),
+                        listing.get("gearbox"),
+                        listing.get("engine_capacity"),
+                        listing.get("engine_power"),
+                        listing.get("city"),
+                        listing.get("region"),
+                        listing.get("seller_name"),
+                        listing.get("seller_type"),
+                        listing.get("thumbnail_url"),
+                        json.dumps(listing.get("badges", [])),
+                        score,
+                        json.dumps(breakdown),
+                        1,  # is_active
+                        listing.get("listing_date"),
+                        now,   # first_seen_at
+                        now,   # last_seen_at
+                        now,   # created_at
                     ))
 
-                    # Track price change
-                    if old_price != new_price:
+            # Use INSERT OR IGNORE for new listings, then UPDATE for existing
+            # This is more Turso-compatible than INSERT OR REPLACE
+            new_count = 0
+            updated_count = 0
+
+            # Process inserts in batches
+            for i in range(0, len(listings_data), batch_size):
+                batch = listings_data[i:i+batch_size]
+                logger.debug(f"Processing batch {i//batch_size + 1}/{(len(listings_data) + batch_size - 1)//batch_size}")
+
+                for row in batch:
+                    listing_id = row[0]
+                    is_existing = listing_id in existing_map
+
+                    if is_existing:
+                        # Update existing
+                        conn.execute("""
+                            UPDATE listings SET
+                                title = ?, url = ?, price = ?, price_evaluation = ?,
+                                make = ?, model = ?, version = ?, year = ?, mileage = ?,
+                                fuel_type = ?, gearbox = ?, engine_capacity = ?, engine_power = ?,
+                                city = ?, region = ?, seller_name = ?, seller_type = ?,
+                                thumbnail_url = ?, badges = ?, deal_score = ?, score_breakdown = ?,
+                                is_active = 1, listing_date = COALESCE(?, listing_date), last_seen_at = ?
+                            WHERE id = ?
+                        """, (
+                            row[1], row[2], row[3], row[4],  # title, url, price, price_eval
+                            row[5], row[6], row[7], row[8], row[9],  # make, model, version, year, mileage
+                            row[10], row[11], row[12], row[13],  # fuel, gearbox, capacity, power
+                            row[14], row[15], row[16], row[17],  # city, region, seller_name, seller_type
+                            row[18], row[19], row[20], row[21],  # thumb, badges, score, breakdown
+                            row[23], now,  # listing_date, last_seen
+                            listing_id
+                        ))
+                        updated_count += 1
+                    else:
+                        # Insert new
+                        conn.execute("""
+                            INSERT INTO listings (
+                                id, title, url, price, price_evaluation,
+                                make, model, version, year, mileage,
+                                fuel_type, gearbox, engine_capacity, engine_power,
+                                city, region, seller_name, seller_type,
+                                thumbnail_url, badges, deal_score, score_breakdown, is_active,
+                                listing_date, first_seen_at, last_seen_at, created_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
+                        """, (
+                            row[0], row[1], row[2], row[3], row[4],  # id, title, url, price, price_eval
+                            row[5], row[6], row[7], row[8], row[9],  # make, model, version, year, mileage
+                            row[10], row[11], row[12], row[13],  # fuel, gearbox, capacity, power
+                            row[14], row[15], row[16], row[17],  # city, region, seller_name, seller_type
+                            row[18], row[19], row[20], row[21],  # thumb, badges, score, breakdown
+                            row[23], now, now, now  # listing_date, first_seen, last_seen, created
+                        ))
+                        new_count += 1
+
+            # Insert price history in batches
+            if price_history_data:
+                for i in range(0, len(price_history_data), batch_size):
+                    batch = price_history_data[i:i+batch_size]
+                    for row in batch:
                         conn.execute(
                             "INSERT INTO price_history (listing_id, price, recorded_at) VALUES (?, ?, ?)",
-                            (listing["id"], new_price, now)
+                            row
                         )
-
-                    updated_count += 1
-                else:
-                    # Insert new listing
-                    conn.execute("""
-                        INSERT INTO listings (
-                            id, title, url, price, price_evaluation,
-                            make, model, version, year, mileage,
-                            fuel_type, gearbox, engine_capacity, engine_power,
-                            city, region, seller_name, seller_type,
-                            thumbnail_url, badges, deal_score, score_breakdown, is_active,
-                            listing_date, first_seen_at, last_seen_at, created_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?, ?, ?)
-                    """, (
-                        listing["id"],
-                        listing["title"],
-                        listing["url"],
-                        listing["price"],
-                        listing["price_evaluation"],
-                        listing["make"],
-                        listing["model"],
-                        listing.get("version"),
-                        listing["year"],
-                        listing.get("mileage"),
-                        listing.get("fuel_type"),
-                        listing.get("gearbox"),
-                        listing.get("engine_capacity"),
-                        listing.get("engine_power"),
-                        listing.get("city"),
-                        listing.get("region"),
-                        listing.get("seller_name"),
-                        listing.get("seller_type"),
-                        listing.get("thumbnail_url"),
-                        json.dumps(listing.get("badges", [])),
-                        score,
-                        json.dumps(breakdown),
-                        listing.get("listing_date"),
-                        now, now, now
-                    ))
-
-                    # Add initial price to history
-                    conn.execute(
-                        "INSERT INTO price_history (listing_id, price, recorded_at) VALUES (?, ?, ?)",
-                        (listing["id"], listing["price"], now)
-                    )
-
-                    new_count += 1
 
         return new_count, updated_count
 

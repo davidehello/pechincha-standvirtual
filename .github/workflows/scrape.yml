@@ -34,10 +34,10 @@ jobs:
           TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
         run: |
           cd scraper
-          # Use reduced concurrency (3) and max 200 pages to avoid rate limits
-          # This covers ~6,400 of the most recent listings
-          # Full database builds up over multiple runs
-          python main.py --parallel --concurrency 3 --max-pages 200
+          # Use reduced concurrency (3) and max 50 pages to fit Turso's latency
+          # This covers ~1,600 listings per run
+          # With runs every 30 min, database builds up over time
+          python main.py --parallel --concurrency 3 --max-pages 50
 
       - name: Trigger score recalculation
         if: success()
