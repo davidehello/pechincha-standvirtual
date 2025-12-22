@@ -3,6 +3,7 @@
 import { TFilterOptions } from "@/types";
 import { RangeSlider, MultiSelect, Checkbox, Button } from "@/components/ui";
 import { formatPrice, formatMileage } from "@/lib/utils/format";
+import { useLanguage } from "@/lib/i18n";
 
 interface FilterPanelProps {
   filters: TFilterOptions;
@@ -14,26 +15,6 @@ interface FilterPanelProps {
   isLoading?: boolean;
 }
 
-const FUEL_TYPE_OPTIONS = [
-  { value: "diesel", label: "Diesel" },
-  { value: "gasoline", label: "Gasoline" },
-  { value: "electric", label: "Electric" },
-  { value: "hybrid", label: "Hybrid" },
-  { value: "plug-in-hybrid", label: "Plug-in Hybrid" },
-  { value: "lpg", label: "LPG" },
-];
-
-const GEARBOX_OPTIONS = [
-  { value: "manual", label: "Manual" },
-  { value: "automatic", label: "Automatic" },
-];
-
-const PRICE_EVALUATION_OPTIONS = [
-  { value: "BELOW", label: "Below Market" },
-  { value: "IN", label: "At Market" },
-  { value: "ABOVE", label: "Above Market" },
-];
-
 export function FilterPanel({
   filters,
   onChange,
@@ -43,7 +24,28 @@ export function FilterPanel({
   regions,
   isLoading,
 }: FilterPanelProps) {
+  const { t } = useLanguage();
   const currentYear = new Date().getFullYear();
+
+  const FUEL_TYPE_OPTIONS = [
+    { value: "diesel", label: t.fuel.diesel },
+    { value: "gasoline", label: t.fuel.gasoline },
+    { value: "electric", label: t.fuel.electric },
+    { value: "hybrid", label: t.fuel.hybrid },
+    { value: "plug-in-hybrid", label: t.fuel["plug-in-hybrid"] },
+    { value: "lpg", label: t.fuel.lpg },
+  ];
+
+  const GEARBOX_OPTIONS = [
+    { value: "manual", label: t.gearbox.manual },
+    { value: "automatic", label: t.gearbox.automatic },
+  ];
+
+  const PRICE_EVALUATION_OPTIONS = [
+    { value: "BELOW", label: t.priceEval.below },
+    { value: "IN", label: t.priceEval.in },
+    { value: "ABOVE", label: t.priceEval.above },
+  ];
 
   const updateFilter = <K extends keyof TFilterOptions>(
     key: K,
@@ -64,10 +66,10 @@ export function FilterPanel({
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold">Filters</h2>
+        <h2 className="text-lg font-semibold">{t.filters.title}</h2>
         {hasActiveFilters && (
           <Button variant="ghost" size="sm" onClick={onReset}>
-            Reset
+            {t.filters.reset}
           </Button>
         )}
       </div>
@@ -75,7 +77,7 @@ export function FilterPanel({
       {/* Deal Score */}
       <div className="space-y-3">
         <RangeSlider
-          label="Deal Score"
+          label={t.filters.dealScore}
           min={0}
           max={100}
           step={5}
@@ -88,18 +90,18 @@ export function FilterPanel({
       {/* Availability */}
       <div className="space-y-2">
         <Checkbox
-          label="Hide unavailable listings"
+          label={t.filters.hideUnavailable}
           checked={filters.hideUnavailable ?? true}
           onChange={(checked) => updateFilter("hideUnavailable", checked)}
         />
         <p className="text-xs text-muted-foreground">
-          Uncheck to show listings no longer on StandVirtual
+          {t.filters.hideUnavailableDesc}
         </p>
       </div>
 
       {/* Price */}
       <RangeSlider
-        label="Price"
+        label={t.filters.price}
         min={0}
         max={100000}
         step={1000}
@@ -116,7 +118,7 @@ export function FilterPanel({
 
       {/* Year */}
       <RangeSlider
-        label="Year"
+        label={t.filters.year}
         min={2000}
         max={currentYear}
         step={1}
@@ -132,7 +134,7 @@ export function FilterPanel({
 
       {/* Mileage */}
       <RangeSlider
-        label="Mileage"
+        label={t.filters.mileage}
         min={0}
         max={300000}
         step={5000}
@@ -149,34 +151,34 @@ export function FilterPanel({
 
       {/* Make */}
       <MultiSelect
-        label="Make"
+        label={t.filters.make}
         options={makeOptions}
         value={filters.makes ?? []}
         onChange={(v) => updateFilter("makes", v.length > 0 ? v : undefined)}
-        placeholder="All makes"
+        placeholder={t.filters.allMakes}
       />
 
       {/* Model */}
       <MultiSelect
-        label="Model"
+        label={t.filters.model}
         options={modelOptions}
         value={filters.models ?? []}
         onChange={(v) => updateFilter("models", v.length > 0 ? v : undefined)}
-        placeholder="All models"
+        placeholder={t.filters.allModels}
       />
 
       {/* Region */}
       <MultiSelect
-        label="Region"
+        label={t.filters.region}
         options={regionOptions}
         value={filters.regions ?? []}
         onChange={(v) => updateFilter("regions", v.length > 0 ? v : undefined)}
-        placeholder="All regions"
+        placeholder={t.filters.allRegions}
       />
 
       {/* Fuel Type */}
       <div className="space-y-2">
-        <label className="text-sm font-medium">Fuel Type</label>
+        <label className="text-sm font-medium">{t.filters.fuelType}</label>
         <div className="space-y-1.5">
           {FUEL_TYPE_OPTIONS.map((opt) => (
             <Checkbox
@@ -197,7 +199,7 @@ export function FilterPanel({
 
       {/* Gearbox */}
       <div className="space-y-2">
-        <label className="text-sm font-medium">Gearbox</label>
+        <label className="text-sm font-medium">{t.filters.gearbox}</label>
         <div className="space-y-1.5">
           {GEARBOX_OPTIONS.map((opt) => (
             <Checkbox
@@ -218,7 +220,7 @@ export function FilterPanel({
 
       {/* Price Evaluation */}
       <div className="space-y-2">
-        <label className="text-sm font-medium">Price Evaluation</label>
+        <label className="text-sm font-medium">{t.filters.priceEvaluation}</label>
         <div className="space-y-1.5">
           {PRICE_EVALUATION_OPTIONS.map((opt) => (
             <Checkbox
@@ -242,7 +244,7 @@ export function FilterPanel({
 
       {/* Engine Power */}
       <RangeSlider
-        label="Engine Power (cv)"
+        label={t.filters.enginePower}
         min={0}
         max={500}
         step={10}

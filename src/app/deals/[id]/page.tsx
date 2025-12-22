@@ -10,8 +10,6 @@ import { TListing, TScoreBreakdown } from "@/types";
 import {
   formatPrice,
   formatMileage,
-  formatFuelType,
-  formatGearbox,
   formatEngineCapacity,
   formatEnginePower,
   getDealScoreColor,
@@ -19,8 +17,10 @@ import {
   getPriceEvaluationColor,
 } from "@/lib/utils/format";
 import { getScoreLabel } from "@/lib/utils/dealScore";
+import { useLanguage } from "@/lib/i18n";
 
 export default function DealDetailPage() {
+  const { t } = useLanguage();
   const params = useParams();
   const id = params.id as string;
 
@@ -66,10 +66,10 @@ export default function DealDetailPage() {
       <div className="min-h-screen bg-background">
         <Header />
         <main className="max-w-4xl mx-auto p-6 text-center">
-          <h1 className="text-2xl font-bold mb-4">Deal not found</h1>
+          <h1 className="text-2xl font-bold mb-4">{t.deals.noDeals}</h1>
           <p className="text-muted-foreground mb-6">{error}</p>
           <Link href="/">
-            <Button>Back to Deals</Button>
+            <Button>{t.detail.backToDeals}</Button>
           </Link>
         </main>
       </div>
@@ -82,8 +82,6 @@ export default function DealDetailPage() {
     : null;
 
   // Normalize score breakdown to handle both old and new formats
-  // Old format: { price_evaluation: {score, weight}, mileage: {score}, age: {score}, freshness: {score} }
-  // New format: { priceVsSegment: {score}, priceEvaluation: {score}, mileageQuality: {score}, pricePerKm: {score} }
   const scoreBreakdown: TScoreBreakdown | null = rawBreakdown
     ? {
         priceVsSegment: rawBreakdown.priceVsSegment?.score ?? rawBreakdown.price_evaluation?.score ?? 0,
@@ -93,6 +91,23 @@ export default function DealDetailPage() {
         total: score,
       }
     : null;
+
+  const getPriceEvalText = (eval_: string) => {
+    if (eval_ === "BELOW") return t.priceEval.below;
+    if (eval_ === "IN") return t.priceEval.in;
+    if (eval_ === "ABOVE") return t.priceEval.above;
+    return eval_;
+  };
+
+  const getFuelTypeText = (fuel: string) => {
+    const key = fuel.toLowerCase() as keyof typeof t.fuel;
+    return t.fuel[key] || fuel;
+  };
+
+  const getGearboxText = (gearbox: string) => {
+    const key = gearbox.toLowerCase() as keyof typeof t.gearbox;
+    return t.gearbox[key] || gearbox;
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -116,7 +131,7 @@ export default function DealDetailPage() {
               clipRule="evenodd"
             />
           </svg>
-          Back to Deals
+          {t.detail.backToDeals}
         </Link>
 
         <div className="grid gap-6 lg:grid-cols-[1fr,320px]">
@@ -134,7 +149,7 @@ export default function DealDetailPage() {
                 />
               ) : (
                 <div className="flex items-center justify-center h-full text-muted-foreground">
-                  No image available
+                  No image
                 </div>
               )}
             </div>
@@ -150,7 +165,7 @@ export default function DealDetailPage() {
                   <span
                     className={`px-2 py-1 rounded text-sm font-medium border ${getPriceEvaluationColor(listing.priceEvaluation)}`}
                   >
-                    {listing.priceEvaluation} Market
+                    {getPriceEvalText(listing.priceEvaluation)}
                   </span>
                 )}
               </div>
@@ -158,29 +173,29 @@ export default function DealDetailPage() {
 
             {/* Specs grid */}
             <div className="p-6 rounded-lg border border-border bg-card">
-              <h2 className="text-lg font-semibold mb-4">Specifications</h2>
+              <h2 className="text-lg font-semibold mb-4">{t.detail.specifications}</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Make</p>
+                  <p className="text-sm text-muted-foreground">{t.detail.make}</p>
                   <p className="font-medium">{listing.make}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Model</p>
+                  <p className="text-sm text-muted-foreground">{t.detail.model}</p>
                   <p className="font-medium">{listing.model}</p>
                 </div>
                 {listing.version && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Version</p>
+                    <p className="text-sm text-muted-foreground">{t.detail.version}</p>
                     <p className="font-medium">{listing.version}</p>
                   </div>
                 )}
                 <div>
-                  <p className="text-sm text-muted-foreground">Year</p>
+                  <p className="text-sm text-muted-foreground">{t.detail.year}</p>
                   <p className="font-medium">{listing.year}</p>
                 </div>
                 {listing.mileage && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Mileage</p>
+                    <p className="text-sm text-muted-foreground">{t.detail.mileage}</p>
                     <p className="font-medium">
                       {formatMileage(listing.mileage)}
                     </p>
@@ -188,24 +203,24 @@ export default function DealDetailPage() {
                 )}
                 {listing.fuelType && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Fuel Type</p>
+                    <p className="text-sm text-muted-foreground">{t.detail.fuelType}</p>
                     <p className="font-medium">
-                      {formatFuelType(listing.fuelType)}
+                      {getFuelTypeText(listing.fuelType)}
                     </p>
                   </div>
                 )}
                 {listing.gearbox && (
                   <div>
-                    <p className="text-sm text-muted-foreground">Gearbox</p>
+                    <p className="text-sm text-muted-foreground">{t.detail.gearbox}</p>
                     <p className="font-medium">
-                      {formatGearbox(listing.gearbox)}
+                      {getGearboxText(listing.gearbox)}
                     </p>
                   </div>
                 )}
                 {listing.engineCapacity && (
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Engine Capacity
+                      {t.detail.engineCapacity}
                     </p>
                     <p className="font-medium">
                       {formatEngineCapacity(listing.engineCapacity)}
@@ -215,7 +230,7 @@ export default function DealDetailPage() {
                 {listing.enginePower && (
                   <div>
                     <p className="text-sm text-muted-foreground">
-                      Engine Power
+                      {t.detail.enginePower}
                     </p>
                     <p className="font-medium">
                       {formatEnginePower(listing.enginePower)}
@@ -228,7 +243,7 @@ export default function DealDetailPage() {
             {/* Location */}
             {(listing.city || listing.region) && (
               <div className="p-6 rounded-lg border border-border bg-card">
-                <h2 className="text-lg font-semibold mb-4">Location</h2>
+                <h2 className="text-lg font-semibold mb-4">{t.detail.location}</h2>
                 <div className="flex items-center gap-2">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
@@ -252,7 +267,7 @@ export default function DealDetailPage() {
             {/* Seller */}
             {listing.sellerName && (
               <div className="p-6 rounded-lg border border-border bg-card">
-                <h2 className="text-lg font-semibold mb-4">Seller</h2>
+                <h2 className="text-lg font-semibold mb-4">{t.detail.seller}</h2>
                 <p className="font-medium">{listing.sellerName}</p>
                 {listing.sellerType && (
                   <p className="text-sm text-muted-foreground capitalize">
@@ -267,7 +282,7 @@ export default function DealDetailPage() {
           <div className="space-y-6">
             {/* Deal Score */}
             <div className="p-6 rounded-lg border border-border bg-card">
-              <h2 className="text-lg font-semibold mb-4">Deal Score</h2>
+              <h2 className="text-lg font-semibold mb-4">{t.detail.dealScore}</h2>
 
               <div
                 className={`flex items-center justify-center p-6 rounded-lg border ${getDealScoreBgColor(score)}`}
@@ -287,12 +302,12 @@ export default function DealDetailPage() {
               {/* Score breakdown */}
               {scoreBreakdown && (
                 <div className="mt-4 space-y-3">
-                  <h3 className="text-sm font-medium">Score Breakdown</h3>
+                  <h3 className="text-sm font-medium">{t.detail.scoreBreakdown}</h3>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
-                        Price vs Segment
+                        {t.detail.priceVsSegment}
                       </span>
                       <span className="font-medium">
                         {scoreBreakdown.priceVsSegment.toFixed(0)}
@@ -309,7 +324,7 @@ export default function DealDetailPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
-                        Price Evaluation
+                        {t.detail.priceEvaluation}
                       </span>
                       <span className="font-medium">
                         {scoreBreakdown.priceEvaluation.toFixed(0)}
@@ -326,7 +341,7 @@ export default function DealDetailPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
-                        Mileage Quality
+                        {t.detail.mileageQuality}
                       </span>
                       <span className="font-medium">
                         {scoreBreakdown.mileageQuality.toFixed(0)}
@@ -343,7 +358,7 @@ export default function DealDetailPage() {
                   <div className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-muted-foreground">
-                        Price per Km
+                        {t.detail.pricePerKm}
                       </span>
                       <span className="font-medium">
                         {scoreBreakdown.pricePerKm.toFixed(0)}
@@ -368,10 +383,10 @@ export default function DealDetailPage() {
                 rel="noopener noreferrer"
                 className="block"
               >
-                <Button className="w-full">View on StandVirtual</Button>
+                <Button className="w-full">{t.detail.viewOnStandVirtual}</Button>
               </a>
               <Button variant="secondary" className="w-full">
-                Save Deal
+                {t.detail.saveDeal}
               </Button>
             </div>
           </div>

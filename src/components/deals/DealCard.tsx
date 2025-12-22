@@ -1,8 +1,9 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { TListing } from "@/types";
+import { TListing, TScoreBreakdown } from "@/types";
 import {
   formatPrice,
   formatMileage,
@@ -22,9 +23,24 @@ interface DealCardProps {
 
 export function DealCard({ listing, onSave, isSaved }: DealCardProps) {
   const { language, t } = useLanguage();
+  const [showTooltip, setShowTooltip] = useState(false);
   const score = listing.dealScore ?? 0;
   const isNew = isNewListing(listing.listingDate);
   const listingDateStr = formatListingDate(listing.listingDate, language);
+
+  // Parse score breakdown
+  const rawBreakdown = listing.scoreBreakdown
+    ? JSON.parse(listing.scoreBreakdown)
+    : null;
+  const scoreBreakdown: TScoreBreakdown | null = rawBreakdown
+    ? {
+        priceVsSegment: rawBreakdown.priceVsSegment?.score ?? 0,
+        priceEvaluation: rawBreakdown.priceEvaluation?.score ?? 0,
+        mileageQuality: rawBreakdown.mileageQuality?.score ?? 0,
+        pricePerKm: rawBreakdown.pricePerKm?.score ?? 0,
+        total: score,
+      }
+    : null;
 
   return (
     <div className="group relative flex flex-col rounded-lg border border-border bg-card overflow-hidden transition-all hover:border-muted-foreground/30 hover:shadow-lg">
@@ -46,15 +62,72 @@ export function DealCard({ listing, onSave, isSaved }: DealCardProps) {
 
         {/* Score badge - solid background for visibility */}
         <div
-          className={`absolute top-2 right-2 px-2.5 py-1 rounded-md text-sm font-bold shadow-md ${
-            score >= 80
-              ? "bg-emerald-500 text-white"
-              : score >= 60
-                ? "bg-amber-500 text-white"
-                : "bg-slate-600 text-white"
-          }`}
+          className="absolute top-2 right-2"
+          onMouseEnter={() => setShowTooltip(true)}
+          onMouseLeave={() => setShowTooltip(false)}
         >
-          {score.toFixed(0)}
+          <div
+            className={`px-2.5 py-1 rounded-md text-sm font-bold shadow-md cursor-help ${
+              score >= 80
+                ? "bg-emerald-500 text-white"
+                : score >= 60
+                  ? "bg-amber-500 text-white"
+                  : "bg-slate-600 text-white"
+            }`}
+          >
+            {score.toFixed(0)}
+          </div>
+
+          {/* Score breakdown tooltip */}
+          {showTooltip && scoreBreakdown && (
+            <div className="absolute top-full right-0 mt-1 z-50 w-48 p-3 rounded-lg bg-popover border border-border shadow-lg text-xs">
+              <p className="font-semibold text-foreground mb-2">
+                {t.scoreBreakdown.title}
+              </p>
+              <div className="space-y-1.5">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {t.scoreBreakdown.priceVsSegment}
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {scoreBreakdown.priceVsSegment.toFixed(0)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {t.scoreBreakdown.priceEvaluation}
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {scoreBreakdown.priceEvaluation.toFixed(0)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {t.scoreBreakdown.mileageQuality}
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {scoreBreakdown.mileageQuality.toFixed(0)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">
+                    {t.scoreBreakdown.pricePerKm}
+                  </span>
+                  <span className="font-medium text-foreground">
+                    {scoreBreakdown.pricePerKm.toFixed(0)}
+                  </span>
+                </div>
+                <div className="border-t border-border pt-1.5 mt-1.5 flex justify-between">
+                  <span className="font-semibold text-foreground">
+                    {t.scoreBreakdown.total}
+                  </span>
+                  <span className="font-bold text-foreground">
+                    {score.toFixed(0)}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* New listing badge */}

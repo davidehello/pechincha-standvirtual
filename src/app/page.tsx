@@ -6,6 +6,7 @@ import { DealGrid } from "@/components/deals";
 import { FilterPanel } from "@/components/search";
 import { Button } from "@/components/ui";
 import { TListing, TFilterOptions, TSortOption } from "@/types";
+import { useLanguage } from "@/lib/i18n";
 
 interface Stats {
   activeListings: number;
@@ -23,6 +24,7 @@ interface Stats {
 }
 
 export default function HomePage() {
+  const { t } = useLanguage();
   const [deals, setDeals] = useState<TListing[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [filters, setFilters] = useState<TFilterOptions>({});
@@ -153,12 +155,12 @@ export default function HomePage() {
                   className="lg:hidden"
                   onClick={() => setIsFilterOpen(!isFilterOpen)}
                 >
-                  Filters
+                  {t.filters.title}
                 </Button>
 
                 {/* Results count */}
                 <span className="text-sm text-muted-foreground">
-                  {total.toLocaleString()} deals
+                  {total.toLocaleString()} {t.deals.count}
                 </span>
 
                 {/* Last scraped indicator */}
@@ -167,7 +169,7 @@ export default function HomePage() {
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
                       <path fillRule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H3.989a.75.75 0 00-.75.75v4.242a.75.75 0 001.5 0v-2.43l.31.31a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm1.23-3.723a.75.75 0 00.219-.53V2.929a.75.75 0 00-1.5 0V5.36l-.31-.31A7 7 0 003.239 8.188a.75.75 0 101.448.389A5.5 5.5 0 0113.89 6.11l.311.31h-2.432a.75.75 0 000 1.5h4.243a.75.75 0 00.53-.219z" clipRule="evenodd" />
                     </svg>
-                    Updated {new Date(stats.lastScrapeRun.completedAt).toLocaleString("pt-PT", {
+                    {t.deals.updated} {new Date(stats.lastScrapeRun.completedAt).toLocaleString("pt-PT", {
                       day: "numeric",
                       month: "short",
                       hour: "2-digit",
@@ -183,13 +185,13 @@ export default function HomePage() {
                 onChange={(e) => handleSortChange(e.target.value as TSortOption)}
                 className="px-3 py-1.5 text-sm border border-border rounded-md bg-background focus:outline-none focus:ring-1 focus:ring-primary"
               >
-                <option value="score_desc">Best Score</option>
-                <option value="price_asc">Price: Low to High</option>
-                <option value="price_desc">Price: High to Low</option>
-                <option value="year_desc">Year: Newest</option>
-                <option value="year_asc">Year: Oldest</option>
-                <option value="mileage_asc">Mileage: Lowest</option>
-                <option value="mileage_desc">Mileage: Highest</option>
+                <option value="score_desc">{t.deals.sortBy.score_desc}</option>
+                <option value="price_asc">{t.deals.sortBy.price_asc}</option>
+                <option value="price_desc">{t.deals.sortBy.price_desc}</option>
+                <option value="year_desc">{t.deals.sortBy.year_desc}</option>
+                <option value="year_asc">{t.deals.sortBy.year_asc}</option>
+                <option value="mileage_asc">{t.deals.sortBy.mileage_asc}</option>
+                <option value="mileage_desc">{t.deals.sortBy.mileage_desc}</option>
               </select>
             </div>
           </div>
@@ -220,7 +222,7 @@ export default function HomePage() {
                   onClick={loadMore}
                   isLoading={isLoading && page > 1}
                 >
-                  Load More
+                  {t.deals.loadMore}
                 </Button>
               </div>
             )}
@@ -228,12 +230,12 @@ export default function HomePage() {
             {/* Empty state when no database */}
             {!isLoading && deals.length === 0 && (
               <div className="text-center py-12">
-                <h2 className="text-xl font-semibold mb-2">No deals found</h2>
+                <h2 className="text-xl font-semibold mb-2">{t.deals.noDeals}</h2>
                 <p className="text-muted-foreground mb-4">
-                  Run the scraper to fetch listings from StandVirtual.
+                  {t.deals.noDealsDesc}
                 </p>
                 <Button onClick={() => (window.location.href = "/admin")}>
-                  Go to Admin
+                  {t.deals.goToAdmin}
                 </Button>
               </div>
             )}

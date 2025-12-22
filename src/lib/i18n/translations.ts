@@ -90,6 +90,16 @@ export const translations = {
       published: "Publicado",
     },
 
+    // Score breakdown (tooltip)
+    scoreBreakdown: {
+      title: "Detalhes da Pontuação",
+      priceVsSegment: "Preço vs Segmento",
+      priceEvaluation: "Avaliação de Preço",
+      mileageQuality: "Qualidade da Km",
+      pricePerKm: "Preço por Km",
+      total: "Total",
+    },
+
     // Saved page
     saved: {
       title: "Ofertas Guardadas",
@@ -265,6 +275,16 @@ export const translations = {
       viewInStandVirtual: "View in StandVirtual",
       new: "NEW",
       published: "Published",
+    },
+
+    // Score breakdown (tooltip)
+    scoreBreakdown: {
+      title: "Score Breakdown",
+      priceVsSegment: "Price vs Segment",
+      priceEvaluation: "Price Evaluation",
+      mileageQuality: "Mileage Quality",
+      pricePerKm: "Price per Km",
+      total: "Total",
     },
 
     // Saved page
