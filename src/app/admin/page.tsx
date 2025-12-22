@@ -87,6 +87,7 @@ export default function AdminPage() {
     // Poll scraper status every 2 seconds for responsive progress updates
     const interval = setInterval(fetchScraperStatus, 2000);
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleTriggerScrape = async () => {
@@ -103,7 +104,7 @@ export default function AdminPage() {
       } else {
         setMessage(data.error || t.admin.failedToStart);
       }
-    } catch (error) {
+    } catch {
       setMessage(t.admin.failedToStart);
     } finally {
       setTriggerLoading(false);

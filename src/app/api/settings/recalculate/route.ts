@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db, listings, settings } from "@/lib/db";
 import { priceHistory } from "@/lib/db/schema";
-import { eq, sql, gte, or, and, desc, inArray } from "drizzle-orm";
+import { eq, gte, or, desc, inArray } from "drizzle-orm";
 import { TAlgorithmWeights, DEFAULT_WEIGHTS } from "@/types";
 
 // Time decay configuration
@@ -158,7 +158,6 @@ async function calculatePriceVsSegmentScores(): Promise<Map<string, number>> {
 async function calculatePriceDropScores(): Promise<Map<string, number>> {
   const scores = new Map<string, number>();
   const now = new Date();
-  const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
 
   // Get all active listing IDs
   const activeListings = await db

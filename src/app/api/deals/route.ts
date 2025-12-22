@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db, listings } from "@/lib/db";
 import { priceHistory } from "@/lib/db/schema";
-import { and, gte, lte, inArray, desc, asc, sql, eq } from "drizzle-orm";
+import { and, gte, lte, inArray, desc, asc, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const QuerySchema = z.object({

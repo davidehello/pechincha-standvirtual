@@ -50,7 +50,7 @@ export default function SettingsPage() {
       } else {
         setMessage(t.settings.saveFailed);
       }
-    } catch (error) {
+    } catch {
       setMessage(t.settings.saveFailed);
     } finally {
       setIsSaving(false);
@@ -76,7 +76,7 @@ export default function SettingsPage() {
       } else {
         setMessage(t.settings.recalculateFailed);
       }
-    } catch (error) {
+    } catch {
       setMessage(t.settings.recalculateFailed);
     } finally {
       setIsRecalculating(false);

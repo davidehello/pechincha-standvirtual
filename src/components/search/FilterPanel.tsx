@@ -34,7 +34,6 @@ export function FilterPanel({
   makes,
   models,
   regions,
-  isLoading,
 }: FilterPanelProps) {
   const { t } = useLanguage();
   const currentYear = new Date().getFullYear();

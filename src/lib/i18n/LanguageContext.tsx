@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, ReactNode } from "react";
 import { translations, Language, Translations } from "./translations";
 
 interface LanguageContextType {
@@ -13,16 +13,15 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const STORAGE_KEY = "stand-analyzer-language";
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>("pt");
+function getInitialLanguage(): Language {
+  if (typeof window === "undefined") return "pt";
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved === "pt" || saved === "en") return saved;
+  return "pt";
+}
 
-  useEffect(() => {
-    // Load saved language from localStorage
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && (saved === "pt" || saved === "en")) {
-      setLanguageState(saved);
-    }
-  }, []);
+export function LanguageProvider({ children }: { children: ReactNode }) {
+  const [language, setLanguageState] = useState<Language>(getInitialLanguage);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
