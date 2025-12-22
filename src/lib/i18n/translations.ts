@@ -1,8 +1,8 @@
 export const translations = {
   pt: {
     // App name
-    appName: "Stand Analyzer",
-    appNameShort: "SA",
+    appName: "Analisador de Stands",
+    appNameShort: "AS",
 
     // Navigation
     nav: {
