@@ -14,11 +14,12 @@ function getDb() {
   }
 
   // Create postgres connection
-  // For serverless, we need to limit connections
+  // For serverless with Supabase Transaction Pooler
   const client = postgres(connectionString, {
     max: 1, // Limit connections for serverless
     idle_timeout: 20,
     connect_timeout: 10,
+    prepare: false, // Required for Supabase Transaction Pooler
   });
 
   _db = drizzle(client, { schema });
