@@ -8,10 +8,10 @@ export async function GET() {
     const countResult = await db
       .select({
         total: sql<number>`count(*)`,
-        active: sql<number>`sum(case when ${listings.isActive} = 1 then 1 else 0 end)`,
-        belowMarket: sql<number>`sum(case when ${listings.priceEvaluation} = 'BELOW' and ${listings.isActive} = 1 then 1 else 0 end)`,
-        inMarket: sql<number>`sum(case when ${listings.priceEvaluation} = 'IN' and ${listings.isActive} = 1 then 1 else 0 end)`,
-        aboveMarket: sql<number>`sum(case when ${listings.priceEvaluation} = 'ABOVE' and ${listings.isActive} = 1 then 1 else 0 end)`,
+        active: sql<number>`sum(case when ${listings.isActive} = true then 1 else 0 end)`,
+        belowMarket: sql<number>`sum(case when ${listings.priceEvaluation} = 'BELOW' and ${listings.isActive} = true then 1 else 0 end)`,
+        inMarket: sql<number>`sum(case when ${listings.priceEvaluation} = 'IN' and ${listings.isActive} = true then 1 else 0 end)`,
+        aboveMarket: sql<number>`sum(case when ${listings.priceEvaluation} = 'ABOVE' and ${listings.isActive} = true then 1 else 0 end)`,
       })
       .from(listings);
 
