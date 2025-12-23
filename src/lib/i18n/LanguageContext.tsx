@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect, ReactNode } from "react";
+import { createContext, useContext, useState, useSyncExternalStore, ReactNode, useCallback } from "react";
 import { translations, Language, Translations } from "./translations";
 
 interface LanguageContextType {
@@ -13,24 +13,43 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const STORAGE_KEY = "stand-analyzer-language";
 
+// Get language from localStorage (client-side only)
+function getStoredLanguage(): Language {
+  if (typeof window === "undefined") return "pt";
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (saved === "pt" || saved === "en") return saved;
+  return "pt";
+}
+
+// Subscribe to storage events for cross-tab sync
+function subscribeToStorage(callback: () => void) {
+  window.addEventListener("storage", callback);
+  return () => window.removeEventListener("storage", callback);
+}
+
+// Server snapshot always returns "pt"
+function getServerSnapshot(): Language {
+  return "pt";
+}
+
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  // Always start with "pt" to match server render
-  const [language, setLanguageState] = useState<Language>("pt");
-  const [isHydrated, setIsHydrated] = useState(false);
+  // Use useSyncExternalStore to properly sync with localStorage
+  const storedLanguage = useSyncExternalStore(
+    subscribeToStorage,
+    getStoredLanguage,
+    getServerSnapshot
+  );
 
-  // Load saved language from localStorage after mount (client-side only)
-  useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved === "pt" || saved === "en") {
-      setLanguageState(saved);
-    }
-    setIsHydrated(true);
-  }, []);
+  // Local state for immediate updates (before storage event fires)
+  const [localLanguage, setLocalLanguage] = useState<Language | null>(null);
 
-  const setLanguage = (lang: Language) => {
-    setLanguageState(lang);
+  // Use local state if set, otherwise use stored language
+  const language = localLanguage ?? storedLanguage;
+
+  const setLanguage = useCallback((lang: Language) => {
+    setLocalLanguage(lang);
     localStorage.setItem(STORAGE_KEY, lang);
-  };
+  }, []);
 
   const t = translations[language];
 
