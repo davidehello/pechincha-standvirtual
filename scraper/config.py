@@ -30,10 +30,9 @@ CHECKPOINT_PATH = DATA_DIR / "checkpoint.json"
 # Ensure data directory exists
 DATA_DIR.mkdir(exist_ok=True)
 
-# Turso configuration (for production)
-TURSO_DATABASE_URL = os.environ.get("TURSO_DATABASE_URL")
-TURSO_AUTH_TOKEN = os.environ.get("TURSO_AUTH_TOKEN")
-USE_TURSO = bool(TURSO_DATABASE_URL and TURSO_AUTH_TOKEN)
+# PostgreSQL configuration (Supabase)
+DATABASE_URL = os.environ.get("DATABASE_URL")
+USE_POSTGRES = bool(DATABASE_URL)
 
 # Request Headers (mimic browser)
 HEADERS = {

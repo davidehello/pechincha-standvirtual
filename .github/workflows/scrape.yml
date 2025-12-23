@@ -26,18 +26,14 @@ jobs:
         run: |
           cd scraper
           pip install -r requirements.txt
-          pip install libsql-experimental
 
       - name: Run scraper
         env:
-          TURSO_DATABASE_URL: ${{ secrets.TURSO_DATABASE_URL }}
-          TURSO_AUTH_TOKEN: ${{ secrets.TURSO_AUTH_TOKEN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           cd scraper
-          # Use reduced concurrency (3) and max 50 pages to fit Turso's latency
-          # This covers ~1,600 listings per run
-          # With runs every 30 min, database builds up over time
-          python main.py --parallel --concurrency 3 --max-pages 50
+          # PostgreSQL is faster than Turso, can handle more pages
+          python main.py --parallel --concurrency 5 --max-pages 100
 
       - name: Trigger score recalculation
         if: success()
