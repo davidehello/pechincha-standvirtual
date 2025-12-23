@@ -1,29 +1,37 @@
-import { drizzle } from 'drizzle-orm/libsql';
-import { createClient as createWebClient } from '@libsql/client/web';
-import { createClient as createNodeClient } from '@libsql/client';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
 import * as schema from './schema';
 
-// Check if we're using Turso (production) or local SQLite (development)
-const isProduction = process.env.TURSO_DATABASE_URL && process.env.TURSO_AUTH_TOKEN;
+// Lazy initialization to avoid errors during build
+let _db: ReturnType<typeof drizzle> | null = null;
 
-let db: ReturnType<typeof drizzle>;
+function getDb() {
+  if (_db) return _db;
 
-if (isProduction) {
-  // Production: Use Turso with HTTP/web client for better serverless compatibility
-  const client = createWebClient({
-    url: process.env.TURSO_DATABASE_URL!,
-    authToken: process.env.TURSO_AUTH_TOKEN!,
+  const connectionString = process.env.DATABASE_URL;
+  if (!connectionString) {
+    throw new Error('DATABASE_URL environment variable is not set');
+  }
+
+  // Create postgres connection
+  // For serverless, we need to limit connections
+  const client = postgres(connectionString, {
+    max: 1, // Limit connections for serverless
+    idle_timeout: 20,
+    connect_timeout: 10,
   });
-  db = drizzle(client, { schema });
-} else {
-  // Development: Use local SQLite file with Node client
-  const client = createNodeClient({
-    url: 'file:./scraper/data/listings.db',
-  });
-  db = drizzle(client, { schema });
+
+  _db = drizzle(client, { schema });
+  return _db;
 }
 
-export { db };
+// Export a proxy that lazily initializes the db
+export const db = new Proxy({} as ReturnType<typeof drizzle>, {
+  get(_, prop) {
+    const instance = getDb();
+    return (instance as unknown as Record<string, unknown>)[prop as string];
+  },
+});
 
 // Export schema for use in other files
 export * from './schema';

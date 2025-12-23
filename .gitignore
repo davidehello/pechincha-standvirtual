@@ -60,3 +60,5 @@ venv/
 .idea/
 .vscode/
 package-lock.json
+
+.vercel

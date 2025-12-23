@@ -1,7 +1,7 @@
-import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
+import { pgTable, text, integer, real, boolean, timestamp, serial, index } from 'drizzle-orm/pg-core';
 
 // Main car listings table
-export const listings = sqliteTable('listings', {
+export const listings = pgTable('listings', {
   id: text('id').primaryKey(),                    // External ID from API
   title: text('title').notNull(),
   url: text('url').notNull(),
@@ -40,11 +40,11 @@ export const listings = sqliteTable('listings', {
   scoreBreakdown: text('score_breakdown'),        // JSON
 
   // Metadata
-  isActive: integer('is_active', { mode: 'boolean' }).default(true),
-  listingDate: integer('listing_date', { mode: 'timestamp' }), // Original listing date from API
-  firstSeenAt: integer('first_seen_at', { mode: 'timestamp' }),
-  lastSeenAt: integer('last_seen_at', { mode: 'timestamp' }),
-  createdAt: integer('created_at', { mode: 'timestamp' }),
+  isActive: boolean('is_active').default(true),
+  listingDate: timestamp('listing_date'),
+  firstSeenAt: timestamp('first_seen_at'),
+  lastSeenAt: timestamp('last_seen_at'),
+  createdAt: timestamp('created_at'),
 }, (table) => [
   index('idx_listings_make').on(table.make),
   index('idx_listings_model').on(table.model),
@@ -56,11 +56,11 @@ export const listings = sqliteTable('listings', {
 ]);
 
 // Scrape run history
-export const scrapeRuns = sqliteTable('scrape_runs', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const scrapeRuns = pgTable('scrape_runs', {
+  id: serial('id').primaryKey(),
   status: text('status').notNull(),               // pending, running, completed, failed
-  startedAt: integer('started_at', { mode: 'timestamp' }),
-  completedAt: integer('completed_at', { mode: 'timestamp' }),
+  startedAt: timestamp('started_at'),
+  completedAt: timestamp('completed_at'),
   pagesScraped: integer('pages_scraped').default(0),
   listingsFound: integer('listings_found').default(0),
   listingsNew: integer('listings_new').default(0),
@@ -70,27 +70,27 @@ export const scrapeRuns = sqliteTable('scrape_runs', {
 });
 
 // Saved/favorited deals
-export const savedDeals = sqliteTable('saved_deals', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const savedDeals = pgTable('saved_deals', {
+  id: serial('id').primaryKey(),
   listingId: text('listing_id').notNull().references(() => listings.id),
   notes: text('notes'),
-  savedAt: integer('saved_at', { mode: 'timestamp' }),
+  savedAt: timestamp('saved_at'),
 });
 
 // Price history for tracking changes
-export const priceHistory = sqliteTable('price_history', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const priceHistory = pgTable('price_history', {
+  id: serial('id').primaryKey(),
   listingId: text('listing_id').notNull().references(() => listings.id),
   price: integer('price').notNull(),
-  recordedAt: integer('recorded_at', { mode: 'timestamp' }),
+  recordedAt: timestamp('recorded_at'),
 });
 
 // User settings (algorithm weights, etc.)
-export const settings = sqliteTable('settings', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
+export const settings = pgTable('settings', {
+  id: serial('id').primaryKey(),
   key: text('key').notNull().unique(),
   value: text('value'),                           // JSON for complex values
-  updatedAt: integer('updated_at', { mode: 'timestamp' }),
+  updatedAt: timestamp('updated_at'),
 });
 
 // Type exports
