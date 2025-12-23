@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { translations, Language, Translations } from "./translations";
 
 interface LanguageContextType {
@@ -13,15 +13,19 @@ const LanguageContext = createContext<LanguageContextType | undefined>(undefined
 
 const STORAGE_KEY = "stand-analyzer-language";
 
-function getInitialLanguage(): Language {
-  if (typeof window === "undefined") return "pt";
-  const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved === "pt" || saved === "en") return saved;
-  return "pt";
-}
-
 export function LanguageProvider({ children }: { children: ReactNode }) {
-  const [language, setLanguageState] = useState<Language>(getInitialLanguage);
+  // Always start with "pt" to match server render
+  const [language, setLanguageState] = useState<Language>("pt");
+  const [isHydrated, setIsHydrated] = useState(false);
+
+  // Load saved language from localStorage after mount (client-side only)
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved === "pt" || saved === "en") {
+      setLanguageState(saved);
+    }
+    setIsHydrated(true);
+  }, []);
 
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
