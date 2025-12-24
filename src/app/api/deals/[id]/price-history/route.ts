@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
-import { priceHistory } from "@/lib/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { getSupabase } from "@/lib/supabase";
 
 export async function GET(
   request: NextRequest,
@@ -9,20 +7,19 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const supabase = getSupabase();
 
-    const history = await db
-      .select({
-        id: priceHistory.id,
-        price: priceHistory.price,
-        recordedAt: priceHistory.recordedAt,
-      })
-      .from(priceHistory)
-      .where(eq(priceHistory.listingId, id))
-      .orderBy(desc(priceHistory.recordedAt));
+    const { data: history, error } = await supabase
+      .from('price_history')
+      .select('id, price, recorded_at')
+      .eq('listing_id', id)
+      .order('recorded_at', { ascending: false });
+
+    if (error) throw error;
 
     // Calculate price changes
-    const historyWithChanges = history.map((record, index) => {
-      const nextRecord = history[index + 1]; // Previous in time (older)
+    const historyWithChanges = (history || []).map((record: { id: number; price: number; recorded_at: string | null }, index: number) => {
+      const nextRecord = (history || [])[index + 1] as { id: number; price: number; recorded_at: string | null } | undefined;
       let changePercent: number | null = null;
       let changeAmount: number | null = null;
 
@@ -32,20 +29,23 @@ export async function GET(
       }
 
       return {
-        ...record,
+        id: record.id,
+        price: record.price,
+        recordedAt: record.recorded_at,
         changeAmount,
         changePercent,
       };
     });
 
+    const historyArr = history || [];
     return NextResponse.json({
       listingId: id,
       priceHistory: historyWithChanges,
-      hasPriceChanges: history.length > 1,
-      totalChange: history.length > 1
+      hasPriceChanges: historyArr.length > 1,
+      totalChange: historyArr.length > 1
         ? {
-            amount: history[0].price - history[history.length - 1].price,
-            percent: ((history[0].price - history[history.length - 1].price) / history[history.length - 1].price) * 100
+            amount: historyArr[0].price - historyArr[historyArr.length - 1].price,
+            percent: ((historyArr[0].price - historyArr[historyArr.length - 1].price) / historyArr[historyArr.length - 1].price) * 100
           }
         : null
     });

@@ -38,7 +38,7 @@ jobs:
       - name: Trigger score recalculation
         if: success()
         run: |
-          # Trigger the Next.js API to recalculate scores
-          curl -X POST "${{ secrets.VERCEL_URL }}/api/settings/recalculate" \
+          # Trigger the Next.js API to recalculate scores on Cloudflare Workers
+          curl -X POST "https://pechincha-standvirtual.hello-c4a.workers.dev/api/settings/recalculate" \
             -H "Content-Type: application/json" \
-            --fail --silent --show-error || echo "Score recalculation skipped (URL not set)"
+            --fail --silent --show-error || echo "Score recalculation failed"

@@ -1,20 +1,36 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, savedDeals, listings } from "@/lib/db";
-import { eq, desc } from "drizzle-orm";
+import { getSupabase, TListing, convertListing } from "@/lib/supabase";
 import { z } from "zod";
 
 export async function GET() {
   try {
-    const saved = await db
-      .select({
-        savedDeal: savedDeals,
-        listing: listings,
-      })
-      .from(savedDeals)
-      .innerJoin(listings, eq(savedDeals.listingId, listings.id))
-      .orderBy(desc(savedDeals.savedAt));
+    const supabase = getSupabase();
 
-    const deals = saved.map((s) => s.listing);
+    // Get saved deals with listing info using a join
+    const { data: savedData, error: savedError } = await supabase
+      .from('saved_deals')
+      .select(`
+        id,
+        listing_id,
+        notes,
+        saved_at,
+        listings (*)
+      `)
+      .order('saved_at', { ascending: false });
+
+    if (savedError) throw savedError;
+
+    // Extract the listings - Supabase returns it as an array for many-to-one relations
+    const deals = (savedData || [])
+      .map((s: { listings: TListing | TListing[] | null }) => {
+        // Handle both array and object formats
+        if (Array.isArray(s.listings)) {
+          return s.listings[0] || null;
+        }
+        return s.listings;
+      })
+      .filter((l): l is TListing => l !== null)
+      .map((l: TListing) => convertListing(l));
 
     return NextResponse.json({ deals });
   } catch (error) {
@@ -30,25 +46,32 @@ const SaveDealSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const body = await request.json();
     const { listingId, notes } = SaveDealSchema.parse(body);
 
     // Check if already saved
-    const existing = await db
-      .select()
-      .from(savedDeals)
-      .where(eq(savedDeals.listingId, listingId))
+    const { data: existing, error: existingError } = await supabase
+      .from('saved_deals')
+      .select('id')
+      .eq('listing_id', listingId)
       .limit(1);
 
-    if (existing.length > 0) {
+    if (existingError) throw existingError;
+
+    if (existing && existing.length > 0) {
       return NextResponse.json({ error: "Already saved" }, { status: 400 });
     }
 
-    await db.insert(savedDeals).values({
-      listingId,
-      notes,
-      savedAt: new Date(),
-    });
+    const { error: insertError } = await supabase
+      .from('saved_deals')
+      .insert({
+        listing_id: listingId,
+        notes,
+        saved_at: new Date().toISOString(),
+      });
+
+    if (insertError) throw insertError;
 
     return NextResponse.json({ success: true });
   } catch (error) {
@@ -59,6 +82,7 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const { searchParams } = new URL(request.url);
     const listingId = searchParams.get("listingId");
 
@@ -69,7 +93,12 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    await db.delete(savedDeals).where(eq(savedDeals.listingId, listingId));
+    const { error } = await supabase
+      .from('saved_deals')
+      .delete()
+      .eq('listing_id', listingId);
+
+    if (error) throw error;
 
     return NextResponse.json({ success: true });
   } catch (error) {

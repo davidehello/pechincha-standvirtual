@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, listings } from "@/lib/db";
-import { and, gte, lte, inArray, desc, asc, sql, like, or } from "drizzle-orm";
+import { getSupabase, TListing, convertListing } from "@/lib/supabase";
 import { z } from "zod";
 
 const QuerySchema = z.object({
@@ -39,111 +38,88 @@ export async function GET(request: NextRequest) {
     const params = Object.fromEntries(searchParams.entries());
     const query = QuerySchema.parse(params);
 
-    // Build conditions
-    const conditions = [sql`${listings.isActive} = 1`];
+    const supabase = getSupabase();
 
-    // Text search
+    // Build the query
+    let listingsQuery = supabase.from('listings').select('*', { count: 'exact' });
+
+    // Always filter for active listings
+    listingsQuery = listingsQuery.eq('is_active', true);
+
+    // Text search using ilike for case-insensitive partial matching
     if (query.q) {
-      const searchTerm = `%${query.q}%`;
-      conditions.push(
-        or(
-          like(listings.title, searchTerm),
-          like(listings.make, searchTerm),
-          like(listings.model, searchTerm),
-          like(listings.version, searchTerm)
-        )!
+      listingsQuery = listingsQuery.or(
+        `title.ilike.%${query.q}%,make.ilike.%${query.q}%,model.ilike.%${query.q}%,version.ilike.%${query.q}%`
       );
     }
 
+    // Apply filters
     if (query.priceMin) {
-      conditions.push(gte(listings.price, query.priceMin));
+      listingsQuery = listingsQuery.gte('price', query.priceMin);
     }
     if (query.priceMax) {
-      conditions.push(lte(listings.price, query.priceMax));
+      listingsQuery = listingsQuery.lte('price', query.priceMax);
     }
     if (query.yearMin) {
-      conditions.push(gte(listings.year, query.yearMin));
+      listingsQuery = listingsQuery.gte('year', query.yearMin);
     }
     if (query.yearMax) {
-      conditions.push(lte(listings.year, query.yearMax));
+      listingsQuery = listingsQuery.lte('year', query.yearMax);
     }
     if (query.mileageMin) {
-      conditions.push(gte(listings.mileage, query.mileageMin));
+      listingsQuery = listingsQuery.gte('mileage', query.mileageMin);
     }
     if (query.mileageMax) {
-      conditions.push(lte(listings.mileage, query.mileageMax));
+      listingsQuery = listingsQuery.lte('mileage', query.mileageMax);
     }
     if (query.minDealScore) {
-      conditions.push(gte(listings.dealScore, query.minDealScore));
+      listingsQuery = listingsQuery.gte('deal_score', query.minDealScore);
     }
     if (query.makes) {
-      conditions.push(inArray(listings.make, query.makes.split(",")));
+      listingsQuery = listingsQuery.in('make', query.makes.split(','));
     }
     if (query.models) {
-      conditions.push(inArray(listings.model, query.models.split(",")));
+      listingsQuery = listingsQuery.in('model', query.models.split(','));
     }
     if (query.fuelTypes) {
-      conditions.push(inArray(listings.fuelType, query.fuelTypes.split(",")));
+      listingsQuery = listingsQuery.in('fuel_type', query.fuelTypes.split(','));
     }
     if (query.gearboxTypes) {
-      conditions.push(inArray(listings.gearbox, query.gearboxTypes.split(",")));
+      listingsQuery = listingsQuery.in('gearbox', query.gearboxTypes.split(','));
     }
     if (query.regions) {
-      conditions.push(inArray(listings.region, query.regions.split(",")));
+      listingsQuery = listingsQuery.in('region', query.regions.split(','));
     }
     if (query.priceEvaluations) {
-      conditions.push(
-        inArray(listings.priceEvaluation, query.priceEvaluations.split(","))
-      );
+      listingsQuery = listingsQuery.in('price_evaluation', query.priceEvaluations.split(','));
     }
 
-    // Build sort order
-    let orderBy;
-    switch (query.sort) {
-      case "score_desc":
-        orderBy = desc(listings.dealScore);
-        break;
-      case "price_asc":
-        orderBy = asc(listings.price);
-        break;
-      case "price_desc":
-        orderBy = desc(listings.price);
-        break;
-      case "year_desc":
-        orderBy = desc(listings.year);
-        break;
-      case "year_asc":
-        orderBy = asc(listings.year);
-        break;
-      case "mileage_asc":
-        orderBy = asc(listings.mileage);
-        break;
-      case "mileage_desc":
-        orderBy = desc(listings.mileage);
-        break;
-      default:
-        orderBy = desc(listings.dealScore);
-    }
+    // Apply sorting
+    const sortColumn = (() => {
+      switch (query.sort) {
+        case 'score_desc': return { column: 'deal_score', ascending: false };
+        case 'price_asc': return { column: 'price', ascending: true };
+        case 'price_desc': return { column: 'price', ascending: false };
+        case 'year_desc': return { column: 'year', ascending: false };
+        case 'year_asc': return { column: 'year', ascending: true };
+        case 'mileage_asc': return { column: 'mileage', ascending: true };
+        case 'mileage_desc': return { column: 'mileage', ascending: false };
+        default: return { column: 'deal_score', ascending: false };
+      }
+    })();
 
-    // Get total count
-    const countResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(listings)
-      .where(and(...conditions));
+    listingsQuery = listingsQuery
+      .order(sortColumn.column, { ascending: sortColumn.ascending, nullsFirst: false })
+      .range((query.page - 1) * query.pageSize, query.page * query.pageSize - 1);
 
-    const total = countResult[0]?.count ?? 0;
+    const { data: deals, count, error } = await listingsQuery;
 
-    // Get deals
-    const deals = await db
-      .select()
-      .from(listings)
-      .where(and(...conditions))
-      .orderBy(orderBy)
-      .limit(query.pageSize)
-      .offset((query.page - 1) * query.pageSize);
+    if (error) throw error;
+
+    const total = count ?? 0;
 
     return NextResponse.json({
-      deals,
+      deals: (deals || []).map((d: TListing) => convertListing(d)),
       total,
       page: query.page,
       pageSize: query.pageSize,

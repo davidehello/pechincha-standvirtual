@@ -60,5 +60,10 @@ venv/
 .idea/
 .vscode/
 
+# Cloudflare OpenNext build output
+.open-next/
+
 .vercel
+.env*.local
+
 .env*.local

@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, listings } from "@/lib/db";
-import { priceHistory } from "@/lib/db/schema";
-import { and, gte, lte, inArray, desc, asc, sql } from "drizzle-orm";
+import { getSupabase, TListing, TPriceHistory, convertListing } from "@/lib/supabase";
 import { z } from "zod";
 
 const QuerySchema = z.object({
@@ -31,7 +29,7 @@ const QuerySchema = z.object({
   gearboxTypes: z.string().optional(),
   regions: z.string().optional(),
   priceEvaluations: z.string().optional(),
-  hideUnavailable: z.coerce.boolean().default(true),  // Default to hiding unavailable
+  hideUnavailable: z.coerce.boolean().default(true),
 });
 
 export async function GET(request: NextRequest) {
@@ -40,135 +38,83 @@ export async function GET(request: NextRequest) {
     const params = Object.fromEntries(searchParams.entries());
     const query = QuerySchema.parse(params);
 
-    // Build conditions
-    const conditions = [];
+    const supabase = getSupabase();
 
-    // Filter by availability (hide unavailable by default)
+    // Build the query
+    let listingsQuery = supabase.from('listings').select('*', { count: 'exact' });
+
+    // Filter by availability
     if (query.hideUnavailable) {
-      conditions.push(sql`${listings.isActive} = true`);
+      listingsQuery = listingsQuery.eq('is_active', true);
     }
 
+    // Apply filters
     if (query.priceMin) {
-      conditions.push(gte(listings.price, query.priceMin));
+      listingsQuery = listingsQuery.gte('price', query.priceMin);
     }
     if (query.priceMax) {
-      conditions.push(lte(listings.price, query.priceMax));
+      listingsQuery = listingsQuery.lte('price', query.priceMax);
     }
     if (query.yearMin) {
-      conditions.push(gte(listings.year, query.yearMin));
+      listingsQuery = listingsQuery.gte('year', query.yearMin);
     }
     if (query.yearMax) {
-      conditions.push(lte(listings.year, query.yearMax));
+      listingsQuery = listingsQuery.lte('year', query.yearMax);
     }
     if (query.mileageMin) {
-      conditions.push(gte(listings.mileage, query.mileageMin));
+      listingsQuery = listingsQuery.gte('mileage', query.mileageMin);
     }
     if (query.mileageMax) {
-      conditions.push(lte(listings.mileage, query.mileageMax));
+      listingsQuery = listingsQuery.lte('mileage', query.mileageMax);
     }
     if (query.minDealScore) {
-      conditions.push(gte(listings.dealScore, query.minDealScore));
+      listingsQuery = listingsQuery.gte('deal_score', query.minDealScore);
     }
     if (query.makes) {
-      conditions.push(inArray(listings.make, query.makes.split(",")));
+      listingsQuery = listingsQuery.in('make', query.makes.split(','));
     }
     if (query.models) {
-      conditions.push(inArray(listings.model, query.models.split(",")));
+      listingsQuery = listingsQuery.in('model', query.models.split(','));
     }
     if (query.fuelTypes) {
-      conditions.push(inArray(listings.fuelType, query.fuelTypes.split(",")));
+      listingsQuery = listingsQuery.in('fuel_type', query.fuelTypes.split(','));
     }
     if (query.gearboxTypes) {
-      conditions.push(inArray(listings.gearbox, query.gearboxTypes.split(",")));
+      listingsQuery = listingsQuery.in('gearbox', query.gearboxTypes.split(','));
     }
     if (query.regions) {
-      conditions.push(inArray(listings.region, query.regions.split(",")));
+      listingsQuery = listingsQuery.in('region', query.regions.split(','));
     }
     if (query.priceEvaluations) {
-      conditions.push(
-        inArray(listings.priceEvaluation, query.priceEvaluations.split(","))
-      );
+      listingsQuery = listingsQuery.in('price_evaluation', query.priceEvaluations.split(','));
     }
 
-    // Build sort order
-    let orderBy;
-    switch (query.sort) {
-      case "score_desc":
-        orderBy = desc(listings.dealScore);
-        break;
-      case "price_asc":
-        orderBy = asc(listings.price);
-        break;
-      case "price_desc":
-        orderBy = desc(listings.price);
-        break;
-      case "year_desc":
-        orderBy = desc(listings.year);
-        break;
-      case "year_asc":
-        orderBy = asc(listings.year);
-        break;
-      case "mileage_asc":
-        orderBy = asc(listings.mileage);
-        break;
-      case "mileage_desc":
-        orderBy = desc(listings.mileage);
-        break;
-      default:
-        orderBy = desc(listings.dealScore);
-    }
+    // Apply sorting
+    const sortColumn = (() => {
+      switch (query.sort) {
+        case 'score_desc': return { column: 'deal_score', ascending: false };
+        case 'price_asc': return { column: 'price', ascending: true };
+        case 'price_desc': return { column: 'price', ascending: false };
+        case 'year_desc': return { column: 'year', ascending: false };
+        case 'year_asc': return { column: 'year', ascending: true };
+        case 'mileage_asc': return { column: 'mileage', ascending: true };
+        case 'mileage_desc': return { column: 'mileage', ascending: false };
+        default: return { column: 'deal_score', ascending: false };
+      }
+    })();
 
-    // Build where clause (handle empty conditions)
-    const whereClause = conditions.length > 0 ? and(...conditions) : undefined;
+    listingsQuery = listingsQuery
+      .order(sortColumn.column, { ascending: sortColumn.ascending, nullsFirst: false })
+      .range((query.page - 1) * query.pageSize, query.page * query.pageSize - 1);
 
-    // Get total count
-    const countResult = await db
-      .select({ count: sql<number>`count(*)` })
-      .from(listings)
-      .where(whereClause);
+    const { data: deals, count, error } = await listingsQuery;
 
-    const total = countResult[0]?.count ?? 0;
+    if (error) throw error;
 
-    // Get deals
-    const deals = await db
-      .select()
-      .from(listings)
-      .where(whereClause)
-      .orderBy(orderBy)
-      .limit(query.pageSize)
-      .offset((query.page - 1) * query.pageSize);
+    const total = count ?? 0;
+    const dealIds = (deals || []).map((d: TListing) => d.id);
 
-    // Get price history counts and latest price change for each deal
-    const dealIds = deals.map((d) => d.id);
-
-    // Get listings with price changes (more than 1 price history entry)
-    const priceChanges = dealIds.length > 0
-      ? await db
-          .select({
-            listingId: priceHistory.listingId,
-            count: sql<number>`count(*)`,
-            minPrice: sql<number>`min(${priceHistory.price})`,
-            maxPrice: sql<number>`max(${priceHistory.price})`,
-          })
-          .from(priceHistory)
-          .where(inArray(priceHistory.listingId, dealIds))
-          .groupBy(priceHistory.listingId)
-      : [];
-
-    // Get the most recent two prices for each listing to calculate the change
-    const recentPrices = dealIds.length > 0
-      ? await db
-          .select({
-            listingId: priceHistory.listingId,
-            price: priceHistory.price,
-            recordedAt: priceHistory.recordedAt,
-          })
-          .from(priceHistory)
-          .where(inArray(priceHistory.listingId, dealIds))
-          .orderBy(desc(priceHistory.recordedAt))
-      : [];
-
-    // Build price change map
+    // Get price history for deals
     const priceChangeMap = new Map<string, {
       hasPriceChanges: boolean;
       priceChangePercent: number | null;
@@ -176,32 +122,45 @@ export async function GET(request: NextRequest) {
       previousPrice: number | null;
     }>();
 
-    for (const change of priceChanges) {
-      if (change.count > 1) {
-        // Find the two most recent prices for this listing
-        const listingPrices = recentPrices
-          .filter((p) => p.listingId === change.listingId)
-          .slice(0, 2);
+    if (dealIds.length > 0) {
+      const { data: priceHistoryData, error: priceError } = await supabase
+        .from('price_history')
+        .select('*')
+        .in('listing_id', dealIds)
+        .order('recorded_at', { ascending: false });
 
-        if (listingPrices.length >= 2) {
-          const currentPrice = listingPrices[0].price;
-          const previousPrice = listingPrices[1].price;
-          const changeAmount = currentPrice - previousPrice;
-          const changePercent = (changeAmount / previousPrice) * 100;
+      if (!priceError && priceHistoryData) {
+        // Group by listing_id
+        const pricesByListing = new Map<string, TPriceHistory[]>();
+        for (const record of priceHistoryData as TPriceHistory[]) {
+          if (!pricesByListing.has(record.listing_id)) {
+            pricesByListing.set(record.listing_id, []);
+          }
+          pricesByListing.get(record.listing_id)!.push(record);
+        }
 
-          priceChangeMap.set(change.listingId, {
-            hasPriceChanges: true,
-            priceChangePercent: changePercent,
-            priceChangeAmount: changeAmount,
-            previousPrice: previousPrice,
-          });
+        // Calculate price changes
+        for (const [listingId, prices] of pricesByListing) {
+          if (prices.length >= 2) {
+            const currentPrice = prices[0].price;
+            const previousPrice = prices[1].price;
+            const changeAmount = currentPrice - previousPrice;
+            const changePercent = (changeAmount / previousPrice) * 100;
+
+            priceChangeMap.set(listingId, {
+              hasPriceChanges: true,
+              priceChangePercent: changePercent,
+              priceChangeAmount: changeAmount,
+              previousPrice: previousPrice,
+            });
+          }
         }
       }
     }
 
-    // Enrich deals with price change info
-    const enrichedDeals = deals.map((deal) => ({
-      ...deal,
+    // Enrich deals with price change info and convert to camelCase
+    const enrichedDeals = (deals || []).map((deal: TListing) => ({
+      ...convertListing(deal),
       priceInfo: priceChangeMap.get(deal.id) || {
         hasPriceChanges: false,
         priceChangePercent: null,

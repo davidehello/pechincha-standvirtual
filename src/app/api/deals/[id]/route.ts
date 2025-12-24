@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, listings } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { getSupabase, TListing, convertListing } from "@/lib/supabase";
 
 export async function GET(
   request: NextRequest,
@@ -8,18 +7,21 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const supabase = getSupabase();
 
-    const result = await db
-      .select()
-      .from(listings)
-      .where(eq(listings.id, id))
+    const { data: result, error } = await supabase
+      .from('listings')
+      .select('*')
+      .eq('id', id)
       .limit(1);
 
-    if (result.length === 0) {
+    if (error) throw error;
+
+    if (!result || result.length === 0) {
       return NextResponse.json({ error: "Deal not found" }, { status: 404 });
     }
 
-    return NextResponse.json(result[0]);
+    return NextResponse.json(convertListing(result[0] as TListing));
   } catch (error) {
     console.error("Error fetching deal:", error);
     return NextResponse.json(

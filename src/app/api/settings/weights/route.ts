@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db, settings } from "@/lib/db";
-import { eq } from "drizzle-orm";
+import { getSupabase } from "@/lib/supabase";
 import { z } from "zod";
 import { DEFAULT_WEIGHTS } from "@/types";
 
@@ -15,13 +14,17 @@ const WeightsSchema = z.object({
 
 export async function GET() {
   try {
-    const result = await db
-      .select()
-      .from(settings)
-      .where(eq(settings.key, "algorithm_weights"))
+    const supabase = getSupabase();
+
+    const { data: result, error } = await supabase
+      .from('settings')
+      .select('*')
+      .eq('key', 'algorithm_weights')
       .limit(1);
 
-    if (result.length > 0 && result[0].value) {
+    if (error) throw error;
+
+    if (result && result.length > 0 && result[0].value) {
       return NextResponse.json({
         weights: JSON.parse(result[0].value),
       });
@@ -36,6 +39,7 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = getSupabase();
     const body = await request.json();
     const { weights } = WeightsSchema.parse(body);
 
@@ -53,29 +57,37 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const now = new Date();
+    const now = new Date().toISOString();
 
     // Check if setting exists
-    const existing = await db
-      .select()
-      .from(settings)
-      .where(eq(settings.key, "algorithm_weights"))
+    const { data: existing, error: existingError } = await supabase
+      .from('settings')
+      .select('id')
+      .eq('key', 'algorithm_weights')
       .limit(1);
 
-    if (existing.length > 0) {
-      await db
-        .update(settings)
-        .set({
+    if (existingError) throw existingError;
+
+    if (existing && existing.length > 0) {
+      const { error: updateError } = await supabase
+        .from('settings')
+        .update({
           value: JSON.stringify(weights),
-          updatedAt: now,
+          updated_at: now,
         })
-        .where(eq(settings.key, "algorithm_weights"));
+        .eq('key', 'algorithm_weights');
+
+      if (updateError) throw updateError;
     } else {
-      await db.insert(settings).values({
-        key: "algorithm_weights",
-        value: JSON.stringify(weights),
-        updatedAt: now,
-      });
+      const { error: insertError } = await supabase
+        .from('settings')
+        .insert({
+          key: 'algorithm_weights',
+          value: JSON.stringify(weights),
+          updated_at: now,
+        });
+
+      if (insertError) throw insertError;
     }
 
     return NextResponse.json({ success: true, weights });
