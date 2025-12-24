@@ -21,6 +21,7 @@ export async function POST() {
           "Authorization": `Bearer ${githubToken}`,
           "Accept": "application/vnd.github.v3+json",
           "Content-Type": "application/json",
+          "User-Agent": "pechincha-standvirtual",
         },
         body: JSON.stringify({
           ref: "master",
