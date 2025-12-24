@@ -12,6 +12,28 @@ export async function POST() {
       );
     }
 
+    // Check if there's already a running workflow
+    const runsResponse = await fetch(
+      `https://api.github.com/repos/${githubRepo}/actions/workflows/scrape.yml/runs?status=in_progress&per_page=1`,
+      {
+        headers: {
+          "Authorization": `Bearer ${githubToken}`,
+          "Accept": "application/vnd.github.v3+json",
+          "User-Agent": "pechincha-standvirtual",
+        },
+      }
+    );
+
+    if (runsResponse.ok) {
+      const runsData = await runsResponse.json();
+      if (runsData.total_count > 0) {
+        return NextResponse.json(
+          { error: "A scrape is already in progress. Please wait for it to complete." },
+          { status: 409 }
+        );
+      }
+    }
+
     // Trigger the GitHub Actions workflow
     const response = await fetch(
       `https://api.github.com/repos/${githubRepo}/actions/workflows/scrape.yml/dispatches`,
