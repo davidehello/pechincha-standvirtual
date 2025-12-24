@@ -226,7 +226,16 @@ class Storage:
     def _get_connection(self):
         """Get database connection"""
         if self.use_postgres:
-            conn = psycopg2.connect(DATABASE_URL)
+            # Parse the URL and extract components (handles URL-encoded passwords)
+            from urllib.parse import urlparse, unquote
+            parsed = urlparse(DATABASE_URL)
+            conn = psycopg2.connect(
+                host=parsed.hostname,
+                port=parsed.port,
+                user=parsed.username,
+                password=unquote(parsed.password) if parsed.password else None,
+                dbname=parsed.path.lstrip('/')
+            )
             try:
                 yield conn
                 conn.commit()
