@@ -32,8 +32,8 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
         run: |
           cd scraper
-          # PostgreSQL is faster than Turso, can handle more pages
-          python main.py --parallel --concurrency 5 --max-pages 100
+          # PostgreSQL is faster than Turso, scrape all available pages
+          python main.py --parallel --concurrency 5
 
       - name: Trigger score recalculation
         if: success()
