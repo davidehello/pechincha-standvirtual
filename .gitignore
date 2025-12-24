@@ -59,7 +59,6 @@ venv/
 # IDE
 .idea/
 .vscode/
-package-lock.json
 
 .vercel
 .env*.local
