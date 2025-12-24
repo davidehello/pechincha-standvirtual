@@ -8,14 +8,10 @@
     "start": "next start",
     "lint": "eslint",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio",
-    "cf:build": "npx @opennextjs/cloudflare build",
-    "cf:dev": "wrangler dev",
-    "cf:deploy": "wrangler deploy"
+    "db:studio": "drizzle-kit studio"
   },
   "dependencies": {
     "@libsql/client": "^0.15.15",
-    "@opennextjs/cloudflare": "^1.14.7",
     "drizzle-orm": "^0.45.1",
     "next": "^15.3.5",
     "postgres": "^3.4.7",
