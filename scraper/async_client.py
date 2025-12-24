@@ -33,7 +33,7 @@ class AsyncGraphQLClient:
         self.session = aiohttp.ClientSession(
             headers=HEADERS,
             connector=connector,
-            timeout=aiohttp.ClientTimeout(total=30)
+            timeout=aiohttp.ClientTimeout(total=60)  # Increased from 30s to 60s
         )
         self._semaphore = asyncio.Semaphore(self.concurrency)
         return self

@@ -18,7 +18,7 @@ MAX_PAGES = 1400  # Safety limit (~44,800 listings max)
 REQUESTS_PER_MINUTE = 100  # ~100 req/min max throughput
 MIN_DELAY_SECONDS = 0.1    # Minimal delay for safety
 MAX_DELAY_SECONDS = 0.3
-MAX_RETRIES = 5
+MAX_RETRIES = 8  # Increased from 5 to 8 for better recovery
 RETRY_BACKOFF_MULTIPLIER = 2.0
 
 # Paths

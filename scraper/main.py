@@ -279,15 +279,16 @@ class AsyncScraper:
                     logger.info(f"Fetching {len(remaining_pages)} pages in parallel...")
                     results = await client.fetch_pages(remaining_pages, progress_callback)
 
-                    # Process results in batches for incremental saving
+                    # Process results and collect failed pages for retry
                     logger.info("Processing results and saving in batches...")
                     batch_listings = []
                     batch_size = 1000  # Save every 1000 listings
-                    errors = 0
+                    failed_pages = []
 
                     for i, result in enumerate(results):
                         if "error" in result:
-                            errors += 1
+                            failed_pages.append(result["page"])
+                            logger.warning(f"Page {result['page']} failed: {result['error']}")
                             continue
 
                         page_listings = client.extract_listings(result["data"])
@@ -315,8 +316,31 @@ class AsyncScraper:
                                 listings_updated=total_updated,
                             )
 
-                    if errors > 0:
-                        logger.warning(f"{errors} pages failed to fetch")
+                    # Retry failed pages up to 3 times
+                    retry_round = 1
+                    max_retry_rounds = 3
+                    while failed_pages and retry_round <= max_retry_rounds:
+                        logger.info(f"Retry round {retry_round}: {len(failed_pages)} failed pages to retry...")
+                        await asyncio.sleep(2)  # Small delay before retry
+
+                        retry_results = await client.fetch_pages(failed_pages, None)
+                        still_failed = []
+
+                        for result in retry_results:
+                            if "error" in result:
+                                still_failed.append(result["page"])
+                                continue
+
+                            page_listings = client.extract_listings(result["data"])
+                            if page_listings:
+                                batch_listings.extend(page_listings)
+                                logger.info(f"Recovered page {result['page']}: {len(page_listings)} listings")
+
+                        failed_pages = still_failed
+                        retry_round += 1
+
+                    if failed_pages:
+                        logger.error(f"PERMANENTLY FAILED: {len(failed_pages)} pages after {max_retry_rounds} retry rounds: {failed_pages[:20]}{'...' if len(failed_pages) > 20 else ''}")
 
                     # Save remaining listings
                     if batch_listings:
