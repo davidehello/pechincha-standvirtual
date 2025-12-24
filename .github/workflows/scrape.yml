@@ -9,7 +9,7 @@ on:
 jobs:
   scrape:
     runs-on: ubuntu-latest
-    timeout-minutes: 14  # Increased timeout for cloud scraping
+    timeout-minutes: 30  # Allow up to 30 minutes for full scrape
 
     steps:
       - name: Checkout code
