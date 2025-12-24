@@ -6,6 +6,16 @@ import { Button } from "@/components/ui";
 import { formatRelativeDate } from "@/lib/utils/format";
 import { useLanguage } from "@/lib/i18n";
 
+interface ScrapeDetails {
+  api_total_count: number;
+  expected_from_pagination: number;
+  coverage_percentage: number;
+  pages_failed: number;
+  failed_page_numbers: number[];
+  duration_seconds: number;
+  speed_pages_per_min: number;
+}
+
 interface ScrapeRun {
   id: number;
   status: string;
@@ -17,6 +27,7 @@ interface ScrapeRun {
   listingsUpdated: number | null;
   listingsInactive: number | null;
   errorMessage: string | null;
+  scrapeDetails: ScrapeDetails | null;
   duration: string | null;
   elapsed: string | null;
 }
@@ -318,6 +329,7 @@ export default function AdminPage() {
                         <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.new}</th>
                         <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.updated}</th>
                         <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.unavailable}</th>
+                        <th className="text-center py-2 px-2 font-medium text-muted-foreground">{t.admin.info || "Info"}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -339,6 +351,69 @@ export default function AdminPage() {
                           <td className="py-2 px-2 text-right text-success">+{run.listingsNew?.toLocaleString() ?? 0}</td>
                           <td className="py-2 px-2 text-right">{run.listingsUpdated?.toLocaleString() ?? 0}</td>
                           <td className="py-2 px-2 text-right text-destructive">-{run.listingsInactive?.toLocaleString() ?? 0}</td>
+                          <td className="py-2 px-2 text-center">
+                            {(run.scrapeDetails || run.errorMessage) ? (
+                              <div className="relative group inline-block">
+                                <button
+                                  className={`p-1 rounded hover:bg-muted ${
+                                    run.scrapeDetails?.pages_failed || run.errorMessage
+                                      ? "text-warning"
+                                      : "text-muted-foreground"
+                                  }`}
+                                  aria-label={t.admin.viewDetails || "View details"}
+                                >
+                                  <svg
+                                    xmlns="http://www.w3.org/2000/svg"
+                                    width="16"
+                                    height="16"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                  >
+                                    <circle cx="12" cy="12" r="10" />
+                                    <path d="M12 16v-4" />
+                                    <path d="M12 8h.01" />
+                                  </svg>
+                                </button>
+                                <div className="absolute z-50 right-0 bottom-full mb-2 w-64 p-3 rounded-lg bg-popover border border-border shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all text-left text-xs">
+                                  {run.scrapeDetails && (
+                                    <>
+                                      <div className="flex justify-between mb-1">
+                                        <span className="text-muted-foreground">{t.admin.apiTotal || "API Total"}:</span>
+                                        <span>{run.scrapeDetails.api_total_count?.toLocaleString()}</span>
+                                      </div>
+                                      <div className="flex justify-between mb-1">
+                                        <span className="text-muted-foreground">{t.admin.coverage || "Coverage"}:</span>
+                                        <span className={run.scrapeDetails.coverage_percentage < 95 ? "text-warning" : "text-success"}>
+                                          {run.scrapeDetails.coverage_percentage}%
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between mb-1">
+                                        <span className="text-muted-foreground">{t.admin.speed || "Speed"}:</span>
+                                        <span>{run.scrapeDetails.speed_pages_per_min} {t.admin.pagesPerMin || "pages/min"}</span>
+                                      </div>
+                                      {run.scrapeDetails.pages_failed > 0 && (
+                                        <div className="flex justify-between mb-1 text-warning">
+                                          <span>{t.admin.pagesFailed || "Pages Failed"}:</span>
+                                          <span>{run.scrapeDetails.pages_failed}</span>
+                                        </div>
+                                      )}
+                                    </>
+                                  )}
+                                  {run.errorMessage && (
+                                    <div className="mt-2 pt-2 border-t border-border">
+                                      <span className="text-destructive">{t.admin.error || "Error"}: {run.errorMessage}</span>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
                         </tr>
                       ))}
                     </tbody>

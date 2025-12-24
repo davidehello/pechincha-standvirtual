@@ -97,7 +97,8 @@ class Storage:
                 listings_new INTEGER DEFAULT 0,
                 listings_updated INTEGER DEFAULT 0,
                 listings_inactive INTEGER DEFAULT 0,
-                error_message TEXT
+                error_message TEXT,
+                scrape_details TEXT
             )""",
             # Saved deals table
             """CREATE TABLE IF NOT EXISTS saved_deals (
@@ -185,7 +186,8 @@ class Storage:
                 listings_new INTEGER DEFAULT 0,
                 listings_updated INTEGER DEFAULT 0,
                 listings_inactive INTEGER DEFAULT 0,
-                error_message TEXT
+                error_message TEXT,
+                scrape_details TEXT
             )""",
             # Saved deals table
             """CREATE TABLE IF NOT EXISTS saved_deals (
@@ -645,8 +647,15 @@ class Storage:
                     WHERE id = ?
                 """, (pages_scraped, listings_found, listings_new, listings_updated, listings_inactive, run_id))
 
-    def complete_scrape_run(self, run_id: int, status: str = "completed", error: Optional[str] = None):
+    def complete_scrape_run(
+        self,
+        run_id: int,
+        status: str = "completed",
+        error: Optional[str] = None,
+        scrape_details: Optional[dict] = None
+    ):
         """Mark scrape run as completed or failed"""
+        details_json = json.dumps(scrape_details) if scrape_details else None
         with self._get_connection() as conn:
             if self.use_postgres:
                 from datetime import datetime
@@ -655,18 +664,20 @@ class Storage:
                     UPDATE scrape_runs SET
                         status = %s,
                         completed_at = %s,
-                        error_message = %s
+                        error_message = %s,
+                        scrape_details = %s
                     WHERE id = %s
-                """, (status, datetime.utcnow(), error, run_id))
+                """, (status, datetime.utcnow(), error, details_json, run_id))
             else:
                 now = int(time.time())
                 conn.execute("""
                     UPDATE scrape_runs SET
                         status = ?,
                         completed_at = ?,
-                        error_message = ?
+                        error_message = ?,
+                        scrape_details = ?
                     WHERE id = ?
-                """, (status, now, error, run_id))
+                """, (status, now, error, details_json, run_id))
 
     def get_stats(self) -> dict:
         """Get database statistics"""

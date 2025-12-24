@@ -185,6 +185,14 @@ export const translations = {
       statusFailed: "Falhou",
       cancelScrape: "Cancelar",
       scrapeCancelled: "Recolha cancelada ou expirou",
+      info: "Info",
+      viewDetails: "Ver detalhes",
+      apiTotal: "Total da API",
+      coverage: "Cobertura",
+      speed: "Velocidade",
+      pagesPerMin: "pág/min",
+      pagesFailed: "Páginas Falhadas",
+      error: "Erro",
     },
 
     // Detail page
@@ -413,6 +421,14 @@ export const translations = {
       statusFailed: "Failed",
       cancelScrape: "Cancel",
       scrapeCancelled: "Scrape cancelled or timed out",
+      info: "Info",
+      viewDetails: "View details",
+      apiTotal: "API Total",
+      coverage: "Coverage",
+      speed: "Speed",
+      pagesPerMin: "pages/min",
+      pagesFailed: "Pages Failed",
+      error: "Error",
     },
 
     // Detail page

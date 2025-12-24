@@ -367,9 +367,6 @@ class AsyncScraper:
                     listings_inactive=inactive_count,
                 )
 
-                # Complete run
-                self.storage.complete_scrape_run(run_id)
-
                 # Final stats
                 elapsed = time.time() - start_time
                 stats = self.storage.get_stats()
@@ -377,6 +374,20 @@ class AsyncScraper:
                 # Calculate coverage percentage
                 coverage_pct = (total_found / total_count * 100) if total_count > 0 else 0
                 failed_count = len(failed_pages) if failed_pages else 0
+
+                # Build scrape details for storage
+                scrape_details = {
+                    "api_total_count": total_count,
+                    "expected_from_pagination": total_pages * 32,
+                    "coverage_percentage": round(coverage_pct, 1),
+                    "pages_failed": failed_count,
+                    "failed_page_numbers": failed_pages[:50] if failed_pages else [],  # Store first 50 failed pages
+                    "duration_seconds": round(elapsed, 1),
+                    "speed_pages_per_min": round(total_pages / elapsed * 60) if elapsed > 0 else 0,
+                }
+
+                # Complete run with details
+                self.storage.complete_scrape_run(run_id, scrape_details=scrape_details)
 
                 logger.info("=" * 50)
                 logger.info("Scrape completed successfully!")

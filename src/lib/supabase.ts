@@ -59,6 +59,17 @@ export interface TScrapeRun {
   listings_updated: number | null;
   listings_inactive: number | null;
   error_message: string | null;
+  scrape_details: string | null;
+}
+
+export interface TScrapeDetails {
+  api_total_count: number;
+  expected_from_pagination: number;
+  coverage_percentage: number;
+  pages_failed: number;
+  failed_page_numbers: number[];
+  duration_seconds: number;
+  speed_pages_per_min: number;
 }
 
 export interface TSavedDeal {
@@ -160,6 +171,16 @@ export function convertScrapeRun(run: TScrapeRun): Record<string, unknown> {
   // For running scrapes, calculate elapsed time from now
   const elapsedSeconds = isRunning ? calculateDurationSeconds(run.started_at, null) : null;
 
+  // Parse scrape details if available
+  let scrapeDetails: TScrapeDetails | null = null;
+  if (run.scrape_details) {
+    try {
+      scrapeDetails = JSON.parse(run.scrape_details) as TScrapeDetails;
+    } catch {
+      // Ignore parse errors
+    }
+  }
+
   return {
     id: run.id,
     status: run.status,
@@ -171,6 +192,7 @@ export function convertScrapeRun(run: TScrapeRun): Record<string, unknown> {
     listingsUpdated: run.listings_updated,
     listingsInactive: run.listings_inactive,
     errorMessage: run.error_message,
+    scrapeDetails: scrapeDetails,
     // Duration fields
     durationSeconds: isRunning ? null : durationSeconds,
     duration: isRunning ? null : formatDuration(durationSeconds),
