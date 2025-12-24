@@ -33,7 +33,8 @@ jobs:
         run: |
           cd scraper
           # PostgreSQL is faster than Turso, scrape all available pages
-          python main.py --parallel --concurrency 5
+          # Using concurrency 3 to reduce rate limiting
+          python main.py --parallel --concurrency 3
 
       - name: Trigger score recalculation
         if: success()

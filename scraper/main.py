@@ -279,32 +279,55 @@ class AsyncScraper:
                     logger.info(f"Fetching {len(remaining_pages)} pages in parallel...")
                     results = await client.fetch_pages(remaining_pages, progress_callback)
 
-                    # Collect all listings first, then batch save
-                    logger.info("Processing results and extracting listings...")
-                    all_listings = []
+                    # Process results in batches for incremental saving
+                    logger.info("Processing results and saving in batches...")
+                    batch_listings = []
+                    batch_size = 1000  # Save every 1000 listings
                     errors = 0
-                    for result in results:
+
+                    for i, result in enumerate(results):
                         if "error" in result:
                             errors += 1
                             continue
 
                         page_listings = client.extract_listings(result["data"])
                         if page_listings:
-                            all_listings.extend(page_listings)
+                            batch_listings.extend(page_listings)
+
+                        # Save batch when we have enough listings
+                        if len(batch_listings) >= batch_size:
+                            logger.info(f"Saving batch of {len(batch_listings)} listings...")
+                            save_start = time.time()
+                            new_count, updated_count = self.storage.upsert_listings(batch_listings)
+                            save_elapsed = time.time() - save_start
+                            logger.info(f"Batch saved in {save_elapsed:.1f}s ({new_count} new, {updated_count} updated)")
+                            total_new += new_count
+                            total_updated += updated_count
+                            total_found += len(batch_listings)
+                            batch_listings = []
+
+                            # Update scrape run progress
+                            self.storage.update_scrape_run(
+                                run_id,
+                                pages_scraped=i + 2,  # +1 for first page, +1 for 0-index
+                                listings_found=total_found,
+                                listings_new=total_new,
+                                listings_updated=total_updated,
+                            )
 
                     if errors > 0:
                         logger.warning(f"{errors} pages failed to fetch")
 
-                    # Batch save all listings at once
-                    if all_listings:
-                        logger.info(f"Saving {len(all_listings)} listings to database...")
+                    # Save remaining listings
+                    if batch_listings:
+                        logger.info(f"Saving final batch of {len(batch_listings)} listings...")
                         save_start = time.time()
-                        new_count, updated_count = self.storage.upsert_listings(all_listings)
+                        new_count, updated_count = self.storage.upsert_listings(batch_listings)
                         save_elapsed = time.time() - save_start
-                        logger.info(f"Database save completed in {save_elapsed:.1f}s")
+                        logger.info(f"Final batch saved in {save_elapsed:.1f}s")
                         total_new += new_count
                         total_updated += updated_count
-                        total_found += len(all_listings)
+                        total_found += len(batch_listings)
 
                 # Mark listings as inactive if not seen in this scrape
                 inactive_count = self.storage.mark_inactive_not_seen_since(scrape_start_time)
