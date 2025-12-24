@@ -247,8 +247,8 @@ export default function AdminPage() {
                     onClick={handleCancelScrape}
                     disabled={cancelLoading}
                     isLoading={cancelLoading}
-                    variant="outline"
-                    className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                    variant="ghost"
+                    className="border border-destructive text-destructive hover:bg-destructive hover:text-white"
                   >
                     {t.admin.cancelScrape || "Cancel"}
                   </Button>
