@@ -1,7 +1,7 @@
 "use client";
 
 import { TFilterOptions } from "@/types";
-import { RangeSlider, MultiSelect, Checkbox, Button } from "@/components/ui";
+import { RangeSlider, MultiSelect, Checkbox, Button, Select } from "@/components/ui";
 import { formatPrice, formatMileage } from "@/lib/utils/format";
 import { useLanguage } from "@/lib/i18n";
 
@@ -172,6 +172,32 @@ export function FilterPanel({
         formatValue={formatMileage}
       />
 
+      {/* Engine Power (moved below mileage) */}
+      <RangeSlider
+        label={t.filters.enginePower}
+        min={0}
+        max={500}
+        step={10}
+        value={[filters.enginePowerMin ?? 0, filters.enginePowerMax ?? 500]}
+        onChange={([min, max]) => {
+          onChange({
+            ...filters,
+            enginePowerMin: min > 0 ? min : undefined,
+            enginePowerMax: max < 500 ? max : undefined,
+          });
+        }}
+        formatValue={(v) => `${v} cv`}
+      />
+
+      {/* Price Evaluation (moved above brand) */}
+      <Select
+        label={t.filters.priceEvaluation}
+        options={PRICE_EVALUATION_OPTIONS}
+        value={filters.priceEvaluations?.[0]}
+        onChange={(v) => updateFilter("priceEvaluations", v ? [v] : undefined)}
+        placeholder={t.filters.allPriceEvaluations}
+      />
+
       {/* Make */}
       <MultiSelect
         label={t.filters.make}
@@ -199,87 +225,22 @@ export function FilterPanel({
         placeholder={t.filters.allRegions}
       />
 
-      {/* Fuel Type */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">{t.filters.fuelType}</label>
-        <div className="space-y-1.5">
-          {FUEL_TYPE_OPTIONS.map((opt) => (
-            <Checkbox
-              key={opt.value}
-              label={opt.label}
-              checked={filters.fuelTypes?.includes(opt.value) ?? false}
-              onChange={(checked) => {
-                const current = filters.fuelTypes ?? [];
-                const updated = checked
-                  ? [...current, opt.value]
-                  : current.filter((v) => v !== opt.value);
-                updateFilter("fuelTypes", updated.length > 0 ? updated : undefined);
-              }}
-            />
-          ))}
-        </div>
-      </div>
+      {/* Fuel Type (changed to select box) */}
+      <Select
+        label={t.filters.fuelType}
+        options={FUEL_TYPE_OPTIONS}
+        value={filters.fuelTypes?.[0]}
+        onChange={(v) => updateFilter("fuelTypes", v ? [v] : undefined)}
+        placeholder={t.filters.allFuelTypes}
+      />
 
-      {/* Gearbox */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">{t.filters.gearbox}</label>
-        <div className="space-y-1.5">
-          {GEARBOX_OPTIONS.map((opt) => (
-            <Checkbox
-              key={opt.value}
-              label={opt.label}
-              checked={filters.gearboxTypes?.includes(opt.value) ?? false}
-              onChange={(checked) => {
-                const current = filters.gearboxTypes ?? [];
-                const updated = checked
-                  ? [...current, opt.value]
-                  : current.filter((v) => v !== opt.value);
-                updateFilter("gearboxTypes", updated.length > 0 ? updated : undefined);
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Price Evaluation */}
-      <div className="space-y-2">
-        <label className="text-sm font-medium">{t.filters.priceEvaluation}</label>
-        <div className="space-y-1.5">
-          {PRICE_EVALUATION_OPTIONS.map((opt) => (
-            <Checkbox
-              key={opt.value}
-              label={opt.label}
-              checked={filters.priceEvaluations?.includes(opt.value) ?? false}
-              onChange={(checked) => {
-                const current = filters.priceEvaluations ?? [];
-                const updated = checked
-                  ? [...current, opt.value]
-                  : current.filter((v) => v !== opt.value);
-                updateFilter(
-                  "priceEvaluations",
-                  updated.length > 0 ? updated : undefined
-                );
-              }}
-            />
-          ))}
-        </div>
-      </div>
-
-      {/* Engine Power */}
-      <RangeSlider
-        label={t.filters.enginePower}
-        min={0}
-        max={500}
-        step={10}
-        value={[filters.enginePowerMin ?? 0, filters.enginePowerMax ?? 500]}
-        onChange={([min, max]) => {
-          onChange({
-            ...filters,
-            enginePowerMin: min > 0 ? min : undefined,
-            enginePowerMax: max < 500 ? max : undefined,
-          });
-        }}
-        formatValue={(v) => `${v} cv`}
+      {/* Gearbox (changed to select box) */}
+      <Select
+        label={t.filters.gearbox}
+        options={GEARBOX_OPTIONS}
+        value={filters.gearboxTypes?.[0]}
+        onChange={(v) => updateFilter("gearboxTypes", v ? [v] : undefined)}
+        placeholder={t.filters.allGearboxTypes}
       />
     </div>
   );
