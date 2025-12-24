@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
 
     // Filter by availability (hide unavailable by default)
     if (query.hideUnavailable) {
-      conditions.push(sql`${listings.isActive} = 1`);
+      conditions.push(sql`${listings.isActive} = true`);
     }
 
     if (query.priceMin) {
