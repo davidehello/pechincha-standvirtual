@@ -32,7 +32,15 @@ class Storage:
         self.use_postgres = USE_POSTGRES and PSYCOPG2_AVAILABLE
 
         if self.use_postgres:
-            logger.info(f"Using PostgreSQL database (Supabase)")
+            # Debug: show connection info (mask password)
+            if DATABASE_URL:
+                from urllib.parse import urlparse
+                parsed = urlparse(DATABASE_URL)
+                logger.info(f"Using PostgreSQL database (Supabase)")
+                logger.info(f"  Host: {parsed.hostname}")
+                logger.info(f"  Port: {parsed.port}")
+                logger.info(f"  User: {parsed.username}")
+                logger.info(f"  DB: {parsed.path}")
         else:
             logger.info(f"Using local SQLite database: {db_path}")
 
