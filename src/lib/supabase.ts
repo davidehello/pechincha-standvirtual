@@ -125,8 +125,41 @@ export function convertListing(listing: TListing): Record<string, unknown> {
   };
 }
 
+// Calculate duration in seconds between two dates
+function calculateDurationSeconds(startedAt: string | null, completedAt: string | null): number | null {
+  if (!startedAt) return null;
+
+  const start = new Date(startedAt).getTime();
+  const end = completedAt ? new Date(completedAt).getTime() : Date.now();
+
+  return Math.round((end - start) / 1000);
+}
+
+// Format duration as human-readable string
+function formatDuration(seconds: number | null): string | null {
+  if (seconds === null) return null;
+
+  if (seconds < 60) {
+    return `${seconds}s`;
+  } else if (seconds < 3600) {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
+  } else {
+    const hours = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+  }
+}
+
 // Convert scrape run from DB format to frontend format
 export function convertScrapeRun(run: TScrapeRun): Record<string, unknown> {
+  const durationSeconds = calculateDurationSeconds(run.started_at, run.completed_at);
+  const isRunning = run.status === 'running';
+
+  // For running scrapes, calculate elapsed time from now
+  const elapsedSeconds = isRunning ? calculateDurationSeconds(run.started_at, null) : null;
+
   return {
     id: run.id,
     status: run.status,
@@ -138,5 +171,10 @@ export function convertScrapeRun(run: TScrapeRun): Record<string, unknown> {
     listingsUpdated: run.listings_updated,
     listingsInactive: run.listings_inactive,
     errorMessage: run.error_message,
+    // Duration fields
+    durationSeconds: isRunning ? null : durationSeconds,
+    duration: isRunning ? null : formatDuration(durationSeconds),
+    elapsedSeconds: elapsedSeconds,
+    elapsed: formatDuration(elapsedSeconds),
   };
 }
