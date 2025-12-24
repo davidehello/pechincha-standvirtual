@@ -87,6 +87,7 @@ export interface TFilterOptions {
   engineCapacityMin?: number;
   engineCapacityMax?: number;
   hideUnavailable?: boolean;  // Hide listings not seen in latest scrape
+  priceChanged?: boolean;  // Only show listings where price has changed
 }
 
 // Sort options

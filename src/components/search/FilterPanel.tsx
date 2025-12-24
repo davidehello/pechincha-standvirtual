@@ -110,6 +110,18 @@ export function FilterPanel({
         </p>
       </div>
 
+      {/* Price Changed */}
+      <div className="space-y-2">
+        <Checkbox
+          label={t.filters.priceChanged}
+          checked={filters.priceChanged ?? false}
+          onChange={(checked) => updateFilter("priceChanged", checked || undefined)}
+        />
+        <p className="text-xs text-muted-foreground">
+          {t.filters.priceChangedDesc}
+        </p>
+      </div>
+
       {/* Price */}
       <RangeSlider
         label={t.filters.price}

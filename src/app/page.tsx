@@ -82,6 +82,8 @@ export default function HomePage() {
         params.set("priceEvaluations", filters.priceEvaluations.join(","));
       if (filters.hideUnavailable !== undefined)
         params.set("hideUnavailable", filters.hideUnavailable.toString());
+      if (filters.priceChanged)
+        params.set("priceChanged", "true");
 
       const res = await fetch(`/api/deals?${params}`);
       const data = await res.json();

@@ -52,6 +52,8 @@ export const translations = {
       gearbox: "Caixa",
       priceEvaluation: "Avaliação de Preço",
       enginePower: "Potência (cv)",
+      priceChanged: "Preço alterado",
+      priceChangedDesc: "Mostrar apenas listagens onde o preço mudou",
     },
 
     // Fuel types
@@ -288,6 +290,8 @@ export const translations = {
       gearbox: "Gearbox",
       priceEvaluation: "Price Evaluation",
       enginePower: "Engine Power (cv)",
+      priceChanged: "Price changed",
+      priceChangedDesc: "Show only listings where price has changed",
     },
 
     // Fuel types

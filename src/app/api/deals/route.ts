@@ -30,6 +30,7 @@ const QuerySchema = z.object({
   regions: z.string().optional(),
   priceEvaluations: z.string().optional(),
   hideUnavailable: z.coerce.boolean().default(true),
+  priceChanged: z.coerce.boolean().optional(),
 });
 
 export async function GET(request: NextRequest) {
@@ -40,8 +41,44 @@ export async function GET(request: NextRequest) {
 
     const supabase = getSupabase();
 
+    // If filtering by price changed, first get listing IDs with price changes
+    let priceChangedListingIds: string[] | null = null;
+    if (query.priceChanged) {
+      // Get listings that have more than one price history entry (meaning price changed)
+      const { data: priceHistoryData, error: phError } = await supabase
+        .from('price_history')
+        .select('listing_id');
+
+      if (!phError && priceHistoryData) {
+        // Count occurrences of each listing_id
+        const countMap = new Map<string, number>();
+        for (const record of priceHistoryData) {
+          countMap.set(record.listing_id, (countMap.get(record.listing_id) || 0) + 1);
+        }
+        // Get IDs with more than 1 entry
+        priceChangedListingIds = Array.from(countMap.entries())
+          .filter(([, count]) => count > 1)
+          .map(([id]) => id);
+      }
+    }
+
     // Build the query
     let listingsQuery = supabase.from('listings').select('*', { count: 'exact' });
+
+    // Filter by price changed listing IDs
+    if (query.priceChanged && priceChangedListingIds !== null) {
+      if (priceChangedListingIds.length === 0) {
+        // No listings with price changes, return empty
+        return NextResponse.json({
+          deals: [],
+          total: 0,
+          page: query.page,
+          pageSize: query.pageSize,
+          hasMore: false,
+        });
+      }
+      listingsQuery = listingsQuery.in('id', priceChangedListingIds);
+    }
 
     // Filter by availability
     if (query.hideUnavailable) {
