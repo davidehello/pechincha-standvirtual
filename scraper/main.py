@@ -236,7 +236,8 @@ class AsyncScraper:
                 total_pages = min(client.get_total_pages(first_response), self.max_pages)
                 total_count = first_response["data"]["advertSearch"]["totalCount"]
 
-                logger.info(f"Found {total_count:,} listings across {total_pages} pages")
+                expected_listings = total_pages * 32  # PAGE_SIZE = 32
+                logger.info(f"Found {total_count:,} listings across {total_pages} pages (expecting ~{expected_listings:,} from pagination)")
 
                 # Process first page
                 listings = client.extract_listings(first_response)
@@ -373,12 +374,18 @@ class AsyncScraper:
                 elapsed = time.time() - start_time
                 stats = self.storage.get_stats()
 
+                # Calculate coverage percentage
+                coverage_pct = (total_found / total_count * 100) if total_count > 0 else 0
+                failed_count = len(failed_pages) if failed_pages else 0
+
                 logger.info("=" * 50)
                 logger.info("Scrape completed successfully!")
                 logger.info(f"  Time: {elapsed:.1f}s ({elapsed/60:.1f} min)")
                 logger.info(f"  Speed: {total_pages / elapsed * 60:.0f} pages/min")
                 logger.info(f"  Pages scraped: {total_pages}")
-                logger.info(f"  Listings found: {total_found}")
+                logger.info(f"  Pages failed: {failed_count}")
+                logger.info(f"  API reported: {total_count:,} listings")
+                logger.info(f"  Listings found: {total_found:,} ({coverage_pct:.1f}% coverage)")
                 logger.info(f"  New listings: {total_new}")
                 logger.info(f"  Updated listings: {total_updated}")
                 logger.info(f"  Marked unavailable: {inactive_count}")
