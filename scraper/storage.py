@@ -228,13 +228,19 @@ class Storage:
         if self.use_postgres:
             # Parse the URL and extract components (handles URL-encoded passwords)
             from urllib.parse import urlparse, unquote
-            parsed = urlparse(DATABASE_URL)
+            # Strip any whitespace/newlines from the URL
+            url = DATABASE_URL.strip() if DATABASE_URL else None
+            parsed = urlparse(url)
+
+            # Debug log the parsed components
+            logger.info(f"Connecting: host={parsed.hostname}, port={parsed.port}, user={parsed.username}, db={parsed.path}")
+
             conn = psycopg2.connect(
                 host=parsed.hostname,
                 port=parsed.port,
                 user=parsed.username,
                 password=unquote(parsed.password) if parsed.password else None,
-                dbname=parsed.path.lstrip('/')
+                dbname=parsed.path.lstrip('/').strip()
             )
             try:
                 yield conn
