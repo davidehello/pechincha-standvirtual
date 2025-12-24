@@ -34,6 +34,7 @@ interface Stats {
 
 interface ScraperStatus {
   isRunning: boolean;
+  wasCancelled?: boolean;
   progress?: {
     currentPage: number;
     totalPages: number;
@@ -49,6 +50,7 @@ export default function AdminPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [triggerLoading, setTriggerLoading] = useState(false);
+  const [cancelLoading, setCancelLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const wasRunningRef = useRef(false);
 
@@ -71,7 +73,11 @@ export default function AdminPage() {
 
       // Detect when scraper finishes (was running, now not running)
       if (wasRunningRef.current && !data.isRunning) {
-        setMessage(`✓ ${t.admin.scrapeCompleted}`);
+        if (data.wasCancelled) {
+          setMessage(t.admin.scrapeCancelled || "Scrape was cancelled or timed out");
+        } else {
+          setMessage(`✓ ${t.admin.scrapeCompleted}`);
+        }
         fetchStats(); // Refresh stats to show new data
       }
 
@@ -87,8 +93,19 @@ export default function AdminPage() {
     fetchScraperStatus();
 
     // Poll scraper status every 2 seconds for responsive progress updates
-    const interval = setInterval(fetchScraperStatus, 2000);
-    return () => clearInterval(interval);
+    const statusInterval = setInterval(fetchScraperStatus, 2000);
+
+    // Poll stats every 5 seconds when scraper is running (to update history table)
+    const statsInterval = setInterval(() => {
+      if (wasRunningRef.current) {
+        fetchStats();
+      }
+    }, 5000);
+
+    return () => {
+      clearInterval(statusInterval);
+      clearInterval(statsInterval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -113,6 +130,28 @@ export default function AdminPage() {
     }
   };
 
+  const handleCancelScrape = async () => {
+    setCancelLoading(true);
+    setMessage(null);
+    try {
+      const res = await fetch("/api/scraper/cancel", { method: "POST" });
+      const data = await res.json();
+
+      if (res.ok) {
+        setMessage(t.admin.scrapeCancelled || "Scrape cancelled");
+        setScraperStatus({ isRunning: false });
+        wasRunningRef.current = false;
+        fetchStats(); // Refresh stats
+      } else {
+        setMessage(data.error || "Failed to cancel");
+      }
+    } catch {
+      setMessage("Failed to cancel scrape");
+    } finally {
+      setCancelLoading(false);
+    }
+  };
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "completed":
@@ -121,6 +160,8 @@ export default function AdminPage() {
         return "text-warning";
       case "failed":
         return "text-destructive";
+      case "cancelled":
+        return "text-muted-foreground";
       default:
         return "text-muted-foreground";
     }
@@ -193,13 +234,26 @@ export default function AdminPage() {
                 </div>
               )}
 
-              <Button
-                onClick={handleTriggerScrape}
-                disabled={scraperStatus.isRunning || triggerLoading}
-                isLoading={triggerLoading}
-              >
-                {scraperStatus.isRunning ? t.admin.scraping : t.admin.startScrape}
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleTriggerScrape}
+                  disabled={scraperStatus.isRunning || triggerLoading}
+                  isLoading={triggerLoading}
+                >
+                  {scraperStatus.isRunning ? t.admin.scraping : t.admin.startScrape}
+                </Button>
+                {scraperStatus.isRunning && (
+                  <Button
+                    onClick={handleCancelScrape}
+                    disabled={cancelLoading}
+                    isLoading={cancelLoading}
+                    variant="outline"
+                    className="border-destructive text-destructive hover:bg-destructive hover:text-destructive-foreground"
+                  >
+                    {t.admin.cancelScrape || "Cancel"}
+                  </Button>
+                )}
+              </div>
 
               {message && (
                 <p

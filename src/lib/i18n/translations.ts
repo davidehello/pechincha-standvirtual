@@ -183,6 +183,8 @@ export const translations = {
       statusCompleted: "Concluído",
       statusRunning: "A executar",
       statusFailed: "Falhou",
+      cancelScrape: "Cancelar",
+      scrapeCancelled: "Recolha cancelada ou expirou",
     },
 
     // Detail page
@@ -409,6 +411,8 @@ export const translations = {
       statusCompleted: "Completed",
       statusRunning: "Running",
       statusFailed: "Failed",
+      cancelScrape: "Cancel",
+      scrapeCancelled: "Scrape cancelled or timed out",
     },
 
     // Detail page
