@@ -17,6 +17,8 @@ interface ScrapeRun {
   listingsUpdated: number | null;
   listingsInactive: number | null;
   errorMessage: string | null;
+  duration: string | null;
+  elapsed: string | null;
 }
 
 interface Stats {
@@ -256,6 +258,7 @@ export default function AdminPage() {
                       <tr className="border-b border-border">
                         <th className="text-left py-2 px-2 font-medium text-muted-foreground">{t.admin.when}</th>
                         <th className="text-left py-2 px-2 font-medium text-muted-foreground">{t.admin.status}</th>
+                        <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.duration}</th>
                         <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.pages}</th>
                         <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.found}</th>
                         <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.new}</th>
@@ -273,6 +276,9 @@ export default function AdminPage() {
                           </td>
                           <td className={`py-2 px-2 capitalize ${getStatusColor(run.status)}`}>
                             {run.status}
+                          </td>
+                          <td className="py-2 px-2 text-right text-muted-foreground">
+                            {run.status === "running" ? run.elapsed : run.duration ?? "—"}
                           </td>
                           <td className="py-2 px-2 text-right">{run.pagesScraped?.toLocaleString() ?? "—"}</td>
                           <td className="py-2 px-2 text-right">{run.listingsFound?.toLocaleString() ?? "—"}</td>
