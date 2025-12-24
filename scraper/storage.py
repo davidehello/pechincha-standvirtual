@@ -284,6 +284,13 @@ class Storage:
         from datetime import datetime
         now = datetime.utcnow()
 
+        # Deduplicate listings by ID (keep the last occurrence)
+        seen_ids = {}
+        for listing in listings:
+            seen_ids[listing["id"]] = listing
+        listings = list(seen_ids.values())
+        logger.info(f"Deduplicated to {len(listings)} unique listings")
+
         with self._get_connection() as conn:
             cursor = conn.cursor(cursor_factory=RealDictCursor)
 
