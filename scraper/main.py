@@ -250,6 +250,7 @@ class AsyncScraper:
 
                 # Fetch remaining pages in parallel
                 remaining_pages = list(range(2, total_pages + 1))
+                failed_pages = []  # Initialize here so it's always defined
 
                 if remaining_pages:
                     # Write progress to checkpoint file for status API
@@ -355,25 +356,40 @@ class AsyncScraper:
                         total_found += len(batch_listings)
 
                 # Mark listings as inactive if not seen in this scrape
-                inactive_count = self.storage.mark_inactive_not_seen_since(scrape_start_time)
+                logger.info("Marking inactive listings...")
+                try:
+                    inactive_count = self.storage.mark_inactive_not_seen_since(scrape_start_time)
+                    logger.info(f"Marked {inactive_count} listings as inactive")
+                except Exception as e:
+                    logger.error(f"Error marking inactive listings: {e}")
+                    inactive_count = 0
 
                 # Update scrape run with final stats including inactive count
-                self.storage.update_scrape_run(
-                    run_id,
-                    pages_scraped=total_pages,
-                    listings_found=total_found,
-                    listings_new=total_new,
-                    listings_updated=total_updated,
-                    listings_inactive=inactive_count,
-                )
+                logger.info("Updating scrape run stats...")
+                try:
+                    self.storage.update_scrape_run(
+                        run_id,
+                        pages_scraped=total_pages,
+                        listings_found=total_found,
+                        listings_new=total_new,
+                        listings_updated=total_updated,
+                        listings_inactive=inactive_count,
+                    )
+                except Exception as e:
+                    logger.error(f"Error updating scrape run: {e}")
 
                 # Final stats
                 elapsed = time.time() - start_time
-                stats = self.storage.get_stats()
+                logger.info("Getting database stats...")
+                try:
+                    stats = self.storage.get_stats()
+                except Exception as e:
+                    logger.error(f"Error getting stats: {e}")
+                    stats = {"total_listings": 0, "active_listings": 0, "below_market_count": 0}
 
                 # Calculate coverage percentage
                 coverage_pct = (total_found / total_count * 100) if total_count > 0 else 0
-                failed_count = len(failed_pages) if failed_pages else 0
+                failed_count = len(failed_pages)
 
                 # Build scrape details for storage
                 scrape_details = {

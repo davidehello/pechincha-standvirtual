@@ -24,8 +24,9 @@ export async function GET() {
       // This handles cases where the workflow was cancelled/timed out but DB wasn't updated
       if (githubToken) {
         try {
+          // First check for in-progress workflows
           const runsResponse = await fetch(
-            `https://api.github.com/repos/${githubRepo}/actions/workflows/scrape.yml/runs?status=in_progress&per_page=1`,
+            `https://api.github.com/repos/${githubRepo}/actions/workflows/scrape.yml/runs?per_page=5`,
             {
               headers: {
                 "Authorization": `Bearer ${githubToken}`,
@@ -37,20 +38,53 @@ export async function GET() {
 
           if (runsResponse.ok) {
             const runsData = await runsResponse.json();
+            const runs = runsData.workflow_runs || [];
 
-            // No GitHub workflow running, but DB says running - it was cancelled/timed out
-            if (runsData.total_count === 0) {
-              // Update the database to mark as cancelled
+            // Check if there's an in-progress workflow
+            const inProgressRun = runs.find((r: { status: string }) => r.status === 'in_progress');
+
+            if (inProgressRun) {
+              // Workflow is still running
+              return NextResponse.json({ isRunning: true });
+            }
+
+            // No in-progress workflow - check the most recent completed one
+            const recentRun = runs[0];
+            if (recentRun) {
+              let errorMessage = 'Workflow ended unexpectedly';
+              let status = 'cancelled';
+
+              if (recentRun.conclusion === 'failure') {
+                status = 'failed';
+                errorMessage = 'Workflow failed - check GitHub Actions logs for details';
+              } else if (recentRun.conclusion === 'cancelled') {
+                status = 'cancelled';
+                errorMessage = 'Workflow was cancelled';
+              } else if (recentRun.conclusion === 'timed_out') {
+                status = 'cancelled';
+                errorMessage = 'Workflow timed out';
+              } else if (recentRun.conclusion === 'success') {
+                // Workflow succeeded but DB wasn't updated - something went wrong
+                status = 'failed';
+                errorMessage = 'Workflow succeeded but database was not updated';
+              }
+
+              // Update the database with the actual status
               await supabase
                 .from('scrape_runs')
                 .update({
-                  status: 'cancelled',
+                  status: status,
                   completed_at: new Date().toISOString(),
-                  error_message: 'Workflow cancelled or timed out'
+                  error_message: errorMessage
                 })
                 .eq('id', run.id);
 
-              return NextResponse.json({ isRunning: false, wasCancelled: true });
+              return NextResponse.json({
+                isRunning: false,
+                wasCancelled: status === 'cancelled',
+                status: status,
+                errorMessage: errorMessage
+              });
             }
           }
         } catch (ghError) {
