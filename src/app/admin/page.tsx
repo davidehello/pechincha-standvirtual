@@ -63,7 +63,9 @@ export default function AdminPage() {
   const [triggerLoading, setTriggerLoading] = useState(false);
   const [cancelLoading, setCancelLoading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [isPending, setIsPending] = useState(false);
   const wasRunningRef = useRef(false);
+  const pendingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const fetchStats = async () => {
     try {
@@ -82,8 +84,22 @@ export default function AdminPage() {
       const res = await fetch("/api/scraper/status");
       const data = await res.json();
 
+      // When scraper confirms running, clear pending state
+      if (data.isRunning && isPending) {
+        setIsPending(false);
+        if (pendingTimeoutRef.current) {
+          clearTimeout(pendingTimeoutRef.current);
+          pendingTimeoutRef.current = null;
+        }
+      }
+
       // Detect when scraper finishes (was running, now not running)
       if (wasRunningRef.current && !data.isRunning) {
+        setIsPending(false);
+        if (pendingTimeoutRef.current) {
+          clearTimeout(pendingTimeoutRef.current);
+          pendingTimeoutRef.current = null;
+        }
         if (data.wasCancelled) {
           setMessage(t.admin.scrapeCancelled || "Scrape was cancelled or timed out");
         } else {
@@ -116,6 +132,9 @@ export default function AdminPage() {
     return () => {
       clearInterval(statusInterval);
       clearInterval(statsInterval);
+      if (pendingTimeoutRef.current) {
+        clearTimeout(pendingTimeoutRef.current);
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -321,7 +340,7 @@ export default function AdminPage() {
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-border">
-                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">{t.admin.when}</th>
+                        <th className="text-left py-2 px-2 font-medium text-muted-foreground">{t.admin.startedAt}</th>
                         <th className="text-left py-2 px-2 font-medium text-muted-foreground">{t.admin.status}</th>
                         <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.duration}</th>
                         <th className="text-right py-2 px-2 font-medium text-muted-foreground">{t.admin.pages}</th>
@@ -336,8 +355,8 @@ export default function AdminPage() {
                       {stats.scrapeHistory.map((run) => (
                         <tr key={run.id} className="border-b border-border/50 hover:bg-muted/30">
                           <td className="py-2 px-2">
-                            {run.completedAt
-                              ? formatRelativeDate(new Date(run.completedAt), language)
+                            {run.startedAt
+                              ? formatRelativeDate(new Date(run.startedAt), language)
                               : "—"}
                           </td>
                           <td className={`py-2 px-2 capitalize ${getStatusColor(run.status)}`}>
@@ -346,8 +365,16 @@ export default function AdminPage() {
                           <td className="py-2 px-2 text-right text-muted-foreground">
                             {run.status === "running" ? run.elapsed : run.duration ?? "—"}
                           </td>
-                          <td className="py-2 px-2 text-right">{run.pagesScraped?.toLocaleString() ?? "—"}</td>
-                          <td className="py-2 px-2 text-right">{run.listingsFound?.toLocaleString() ?? "—"}</td>
+                          <td className="py-2 px-2 text-right">
+                            {run.status === "running" && scraperStatus.progress
+                              ? `${scraperStatus.progress.currentPage.toLocaleString()}/${scraperStatus.progress.totalPages.toLocaleString()}`
+                              : run.pagesScraped?.toLocaleString() ?? "—"}
+                          </td>
+                          <td className="py-2 px-2 text-right">
+                            {run.status === "running" && scraperStatus.progress
+                              ? scraperStatus.progress.listingsFound.toLocaleString()
+                              : run.listingsFound?.toLocaleString() ?? "—"}
+                          </td>
                           <td className="py-2 px-2 text-right text-success">+{run.listingsNew?.toLocaleString() ?? 0}</td>
                           <td className="py-2 px-2 text-right">{run.listingsUpdated?.toLocaleString() ?? 0}</td>
                           <td className="py-2 px-2 text-right text-destructive">-{run.listingsInactive?.toLocaleString() ?? 0}</td>
