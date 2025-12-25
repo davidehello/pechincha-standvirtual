@@ -141,20 +141,40 @@ export default function AdminPage() {
 
   const handleTriggerScrape = async () => {
     setTriggerLoading(true);
+    setIsPending(true);
     setMessage(null);
+
+    // Set a timeout to reset pending state if GitHub never confirms running
+    if (pendingTimeoutRef.current) {
+      clearTimeout(pendingTimeoutRef.current);
+    }
+    pendingTimeoutRef.current = setTimeout(() => {
+      setIsPending(false);
+      pendingTimeoutRef.current = null;
+    }, 120000); // 2 minutes timeout
+
     try {
       const res = await fetch("/api/scraper/trigger", { method: "POST" });
       const data = await res.json();
 
       if (res.ok) {
         setMessage(t.admin.scraperStarted);
-        setScraperStatus({ isRunning: true });
         wasRunningRef.current = true; // Track that we started a scrape
       } else {
         setMessage(data.error || t.admin.failedToStart);
+        setIsPending(false);
+        if (pendingTimeoutRef.current) {
+          clearTimeout(pendingTimeoutRef.current);
+          pendingTimeoutRef.current = null;
+        }
       }
     } catch {
       setMessage(t.admin.failedToStart);
+      setIsPending(false);
+      if (pendingTimeoutRef.current) {
+        clearTimeout(pendingTimeoutRef.current);
+        pendingTimeoutRef.current = null;
+      }
     } finally {
       setTriggerLoading(false);
     }
@@ -171,6 +191,11 @@ export default function AdminPage() {
         setMessage(t.admin.scrapeCancelled || "Scrape cancelled");
         setScraperStatus({ isRunning: false });
         wasRunningRef.current = false;
+        setIsPending(false);
+        if (pendingTimeoutRef.current) {
+          clearTimeout(pendingTimeoutRef.current);
+          pendingTimeoutRef.current = null;
+        }
         fetchStats(); // Refresh stats
       } else {
         setMessage(data.error || "Failed to cancel");
@@ -267,12 +292,16 @@ export default function AdminPage() {
               <div className="flex gap-2">
                 <Button
                   onClick={handleTriggerScrape}
-                  disabled={scraperStatus.isRunning || triggerLoading}
-                  isLoading={triggerLoading}
+                  disabled={scraperStatus.isRunning || triggerLoading || isPending}
+                  isLoading={triggerLoading || isPending}
                 >
-                  {scraperStatus.isRunning ? t.admin.scraping : t.admin.startScrape}
+                  {scraperStatus.isRunning
+                    ? t.admin.scraping
+                    : isPending
+                      ? (t.admin.waitingForGitHub || "Waiting for GitHub...")
+                      : t.admin.startScrape}
                 </Button>
-                {scraperStatus.isRunning && (
+                {(scraperStatus.isRunning || isPending) && (
                   <Button
                     onClick={handleCancelScrape}
                     disabled={cancelLoading}
